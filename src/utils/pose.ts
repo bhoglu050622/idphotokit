@@ -27,6 +27,8 @@ const SECOND_FACE_AREA = 0.15;
 // Mesh indices (MediaPipe canonical face model). "Right"/"left" are the subject's own.
 const RIGHT_EYE_CORNERS = [33, 133];
 const LEFT_EYE_CORNERS = [362, 263];
+const RIGHT_IRIS = 468;
+const LEFT_IRIS = 473;
 const NOSE_TIP = 1;
 const RIGHT_CHEEK = 50;
 const LEFT_CHEEK = 280;
@@ -131,6 +133,26 @@ function patchLuminance(img: ImageData, cx: number, cy: number, half: number): n
     }
   }
   return n ? sum / n : 0;
+}
+
+/**
+ * Centre of each pupil of the largest face, normalised to the canvas, or null when no face
+ * is found. These are what an official measures the eye line through; the face detector's
+ * eye keypoints are coarse and often land on the lid or brow.
+ */
+export async function irisCentres(
+  canvas: HTMLCanvasElement
+): Promise<{ left: { x: number; y: number }; right: { x: number; y: number } } | null> {
+  const fl = await getFaceLandmarker();
+  const res = fl.detect(canvas);
+  if (!res.faceLandmarks.length) return null;
+  const areas = res.faceLandmarks.map(faceArea);
+  const points = res.faceLandmarks[areas.indexOf(Math.max(...areas))];
+  if (points.length <= LEFT_IRIS) return null;
+  return {
+    right: { x: points[RIGHT_IRIS].x, y: points[RIGHT_IRIS].y },
+    left: { x: points[LEFT_IRIS].x, y: points[LEFT_IRIS].y }
+  };
 }
 
 function score(categories: { categoryName: string; score: number }[], name: string): number {

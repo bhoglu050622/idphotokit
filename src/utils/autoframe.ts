@@ -1,5 +1,6 @@
 import { detectFaceOnCanvas, type FaceBox } from "./mediapipe";
 import { personMatte } from "./personMatte";
+import { irisCentres } from "./pose";
 
 /**
  * Auto-framing for passport photos.
@@ -58,7 +59,7 @@ export type HeadMetrics = {
   chinY: number;
   /** Horizontal centre of the head, in source-image pixels. */
   centerX: number;
-  /** Eye line when the detector reported keypoints, in source-image pixels. */
+  /** Eye line through the pupils, in source-image pixels, when the eyes were found. */
   eyeY?: number;
   /** True when crownY came from the mask rather than a fallback estimate. */
   crownFromMask: boolean;
@@ -154,16 +155,17 @@ export async function measureHead(bitmap: ImageBitmap, cacheKey = "autoframe"): 
 
   const chinY = face.y + face.h * CHIN_FACTOR;
 
+  // The eye line runs through the pupils. The face mesh finds them precisely; the detector's
+  // own eye keypoints are the fallback when the mesh can't load or misses the face.
+  const irises = await irisCentres(canvas).catch(() => null);
+  const eyes = irises ?? (face.leftEye && face.rightEye ? { left: face.leftEye, right: face.rightEye } : null);
+
   let centerX = face.x + face.w / 2;
   let eyeY: number | undefined;
-  if (face.leftEye && face.rightEye) {
-    // Keypoints are normalised to the analysed canvas.
-    const lx = face.leftEye.x * canvas.width;
-    const rx = face.rightEye.x * canvas.width;
-    const ly = face.leftEye.y * canvas.height;
-    const ry = face.rightEye.y * canvas.height;
-    centerX = (lx + rx) / 2;
-    eyeY = (ly + ry) / 2;
+  if (eyes) {
+    // Normalised to the analysed canvas.
+    centerX = ((eyes.left.x + eyes.right.x) / 2) * canvas.width;
+    eyeY = ((eyes.left.y + eyes.right.y) / 2) * canvas.height;
   }
 
   const toImage = 1 / scale;

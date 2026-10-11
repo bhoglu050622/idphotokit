@@ -175,6 +175,22 @@ a { color: var(--navy); text-decoration-color: var(--line-strong); }
 .btn.danger { background: var(--panel); border-color: var(--redline); color: var(--redline); }
 .btn.danger:hover { background: var(--redline-tint); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* A toggle that is on, e.g. Auto enhance once applied. */
+.btn.good.on, .btn.good.on:hover { background: var(--good); border-color: var(--good); color: #fff; }
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 
 .input, select {
   width: 100%;
@@ -637,6 +653,19 @@ input[type="color"] {
 /* ---------------- Preview surfaces (registration corners) ---------------- */
 
 .previewBox, .cropArea, .bgCardBody { position: relative; }
+
+/* Over the cropper while the head is measured; the first run also downloads the models. */
+.cropBusy {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 23, 28, 0.45);
+  color: #fff;
+  font: 600 14px "IBM Plex Sans", sans-serif;
+}
 
 .corner-ticks { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .corner-ticks span { position: absolute; width: 11px; height: 11px; }

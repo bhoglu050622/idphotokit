@@ -34,3 +34,6 @@ model-images
 .vercel
 .env*
 .wrangler
+
+# Research workbooks (and Excel lock files) stay local
+*.xlsx

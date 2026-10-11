@@ -73,6 +73,8 @@ export default function StepCrop() {
   const previewRef = useRef<HTMLCanvasElement | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Separate from `busy`: the first, automatic frame runs silently but still takes a while.
+  const [framing, setFraming] = useState(false);
 
   // react-easy-crop reports these once it has laid the image out; both are needed to convert
   // a crop rectangle in image pixels back into the component's crop/zoom pair.
@@ -112,6 +114,11 @@ export default function StepCrop() {
 
   const doAutoEnhance = async () => {
     if (!imageBitmap) return;
+    // Pressed again, it takes the enhancement back off.
+    if (adj.autoEnhanced) {
+      setAdj({ brightness: 0, contrast: 0, saturation: 0, autoEnhanced: false });
+      return;
+    }
     setBusy("Auto enhancing...");
     try {
       const src = canvasFromBitmap(imageBitmap);
@@ -133,6 +140,7 @@ export default function StepCrop() {
     if (!imageBitmap || !mediaSize || !cropSize) return false;
 
     if (!silent) setBusy("Finding the head...");
+    setFraming(true);
     setNotice(null);
     try {
       const metrics = await measureHead(imageBitmap);
@@ -165,6 +173,7 @@ export default function StepCrop() {
       return false;
     } finally {
       if (!silent) setBusy(null);
+      setFraming(false);
     }
   }, [imageBitmap, mediaSize, cropSize, aspect, headTarget, preset, crop.rotation, setCrop]);
 
@@ -210,11 +219,28 @@ export default function StepCrop() {
             showGrid={false}
             cropShape="rect"
           />
+          {framing && (
+            <div className="cropBusy" role="status">
+              <span className="spinner" aria-hidden="true" />
+              Finding the head…
+            </div>
+          )}
         </div>
 
         <div className="toolRow" style={{ marginTop: 10 }}>
-          <button className="btn good" onClick={() => void applyAutoFrame()} disabled={!!busy}>Auto-frame head</button>
-          <button className="btn good" onClick={doAutoEnhance} disabled={!!busy}>Auto enhance</button>
+          <button className="btn good" onClick={() => void applyAutoFrame()} disabled={!!busy || framing}>
+            {framing && <span className="spinner" aria-hidden="true" />}
+            Auto-frame head
+          </button>
+          <button
+            className={`btn good${adj.autoEnhanced ? " on" : ""}`}
+            onClick={doAutoEnhance}
+            disabled={!!busy || framing}
+            aria-pressed={adj.autoEnhanced}
+            title={adj.autoEnhanced ? "Applied. Press again to undo." : undefined}
+          >
+            {adj.autoEnhanced ? "✓ Auto enhanced" : "Auto enhance"}
+          </button>
         </div>
 
         <div className="actionRow" style={{ marginTop: 10 }}>

@@ -7,7 +7,7 @@ Every photo the site can make comes from two spreadsheets in this folder:
 
 Edit them to add a country, add a document, or correct a figure. No code changes are needed; the site is rebuilt from these sheets.
 
-`Data_completed.xlsx` is the research workbook the sheets were built from. Its wording matches the site, but **the CSVs are what the site reads**. Make changes there.
+The sheets were built from a research workbook that is kept out of the repo. **The CSVs are what the site reads**, so make changes there.
 
 ## How to edit
 
