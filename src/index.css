@@ -1230,6 +1230,22 @@ details > summary::-webkit-details-marker { display: none; }
   .specDiagram { max-width: 320px; }
 }
 
+/* Out of the way while a photo is being worked on; App.tsx sets the attribute. */
+html[data-editing] .countryDoc { display: none; }
+
+/* The homepage's country list: one line until opened. The links are in the HTML either way. */
+.countryDoc.directory { padding: 18px 0; }
+.directory summary { cursor: pointer; list-style: none; }
+.directory summary::-webkit-details-marker { display: none; }
+.directory summary h2 { display: inline; margin: 0; font-size: 15px; }
+.directory summary::after { content: " ▸"; color: var(--muted); }
+.directory details[open] summary::after { content: " ▾"; }
+.directory details[open] summary { margin-bottom: 12px; }
+
+.crumbs { font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+.crumbs a { color: inherit; }
+.crumbs [aria-current] { color: var(--ink); }
+
 .countryLinks { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
 .countryLinks li { font-size: 13.5px; }
 .countryDocNote { font-size: 12.5px; color: var(--muted); margin-top: 24px; }

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import Wizard from "./components/Wizard";
 import PhotoChecker from "./components/PhotoChecker";
 import { useAppStore, type AppMode } from "./state/store";
@@ -15,6 +16,14 @@ const MODES: Array<{ id: AppMode; label: string; hint: string }> = [
 export default function App() {
   const mode = useAppStore(s => s.mode);
   const setMode = useAppStore(s => s.setMode);
+  const editing = useAppStore(s => s.mode === "make" && s.step > 1);
+
+  // The prerendered section below the app (country links, a document's requirements) is for
+  // arriving and browsing. Once a photo is being worked on it only pushes the page around,
+  // so index.css hides it. Crawlers see the first step, where it is shown.
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-editing", editing);
+  }, [editing]);
 
   return (
     <div className="app">

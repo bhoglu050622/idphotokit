@@ -29,11 +29,14 @@ const SITE = process.env.SITE_URL?.replace(/\/+$/, "") || "https://rightidphoto.
 const META_BLOCK = /<!-- meta:start[\s\S]*?<!-- meta:end -->/;
 const DOC_SLOT = "<!-- country-doc -->";
 
+/** The index of every document, linked from the homepage and every breadcrumb. */
+const HUB_PATH = "/photo";
+
 /** presets.ts is TypeScript, so bundle it to something node can import. */
 async function loadPresets() {
   const result = await build({
     stdin: {
-      contents: `export { PRESETS, ANY_COUNTRY, slugsFor, documentsFor, documentsByCategory, documentLabel, presetTitle, backgroundsFor, backgroundLabel, formatSize, formatFileKB, sourceLabels, samePhotoAs, DEFAULT_HEAD } from "./src/utils/presets";
+      contents: `export { PRESETS, ANY_COUNTRY, slugsFor, documentsFor, documentsByCategory, REGIONS, documentLabel, presetTitle, backgroundsFor, backgroundLabel, formatSize, formatFileKB, sourceLabels, samePhotoAs, DEFAULT_HEAD } from "./src/utils/presets";
                  export { sizeToPx, toInches } from "./src/utils/units";
                  export { BRAND, TAGLINE, HOME_DESCRIPTION } from "./src/brand";`,
       resolveDir: root,
@@ -110,7 +113,37 @@ function metaFor(preset, lib) {
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }
   };
 
-  return metaBlock({ title: pageTitle, description, url, jsonLd }, lib);
+  return metaBlock({ title: pageTitle, description, url, jsonLd: [jsonLd, breadcrumbLd(crumbsFor(preset, lib))] }, lib);
+}
+
+const countryName = (preset, lib) => (preset.country === lib.ANY_COUNTRY ? "Standard sizes" : preset.name);
+
+/** Home › Photo sizes › India › PAN card — the trail a document page sits in. */
+function crumbsFor(preset, lib) {
+  const main = lib.documentsFor(preset.country).find(p => p.primary);
+  const trail = [
+    { name: "Home", path: "/" },
+    { name: "Photo sizes", path: HUB_PATH },
+    { name: countryName(preset, lib), path: pathFor(main, lib) }
+  ];
+  if (!preset.primary) trail.push({ name: lib.documentLabel(preset), path: pathFor(preset, lib) });
+  return trail;
+}
+
+function breadcrumbLd(trail) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: trail.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: `${SITE}${c.path}` }))
+  };
+}
+
+/** The same trail, visible: Google shows breadcrumbs it can also find on the page. */
+function crumbsNav(trail) {
+  const steps = trail.map((c, i) =>
+    i === trail.length - 1 ? `<span aria-current="page">${esc(c.name)}</span>` : `<a href="${c.path}">${esc(c.name)}</a>`
+  );
+  return `<nav class="crumbs" aria-label="Breadcrumb">${steps.join(` <span aria-hidden="true">›</span> `)}</nav>`;
 }
 
 /** Title, description, canonical, Open Graph, Twitter and JSON-LD for one page. */
@@ -306,6 +339,7 @@ function docFor(preset, lib, all) {
 
   return `<section class="countryDoc">
       <div class="countryDocInner">
+        ${crumbsNav(crumbsFor(preset, lib))}
         <h2>${esc(title)} photo requirements</h2>
         <p>
           A ${esc(title)} photo is <strong>${esc(size)}</strong>${preset.unit !== "px" ? ` (${px.w} × ${px.h} pixels at 300 DPI)` : ""}
@@ -356,20 +390,120 @@ function docFor(preset, lib, all) {
     </section>`;
 }
 
+/** Each region's countries, by their main document, alphabetically. */
+function countriesByRegion(presets, lib) {
+  return lib.REGIONS
+    .map(region => ({
+      region,
+      countries: presets
+        .filter(p => p.primary && p.region === region)
+        .sort((a, b) => countryName(a, lib).localeCompare(countryName(b, lib)))
+    }))
+    .filter(g => g.countries.length > 0);
+}
+
+/**
+ * The homepage's section below the app: every country's page as a plain link. Without it
+ * the document pages are reachable only through the sitemap and the script-driven picker,
+ * and a crawler weighs a page nothing links to as one that doesn't matter. Collapsed behind
+ * one line so it doesn't crowd the tool; the links are in the HTML either way.
+ */
+function homeDirectory(presets, lib) {
+  const countries = presets.filter(p => p.primary && p.country !== lib.ANY_COUNTRY).length;
+  return `<section class="countryDoc directory">
+      <details class="countryDocInner">
+        <summary><h2>Photo sizes by country</h2></summary>
+        <p>
+          Requirements for ${presets.length} documents in ${countries} countries — passports, visas,
+          residence permits, ID cards and licences. Each page sets out the size, head height and
+          background, and opens the tool preset to that document.
+          <a href="${HUB_PATH}">See every document</a>.
+        </p>
+        ${countriesByRegion(presets, lib)
+          .map(({ region, countries }) => `<h3>${esc(region)}</h3><ul class="countryLinks">${countries
+            .map(p => `<li><a href="${pathFor(p, lib)}">${esc(countryName(p, lib))}</a></li>`)
+            .join("")}</ul>`)
+          .join("\n        ")}
+      </details>
+    </section>`;
+}
+
+const HUB_TRAIL = [{ name: "Home", path: "/" }, { name: "Photo sizes", path: HUB_PATH }];
+
+/** /photo: every document, under its country, under its region. */
+function hubDoc(presets, lib) {
+  return `<section class="countryDoc">
+      <div class="countryDocInner">
+        ${crumbsNav(HUB_TRAIL)}
+        <h2>ID photo sizes for every document</h2>
+        <p>
+          All ${presets.length} documents, by country. Each links to its requirements — size,
+          head height, background and file limit — and opens the tool preset to it.
+        </p>
+        ${countriesByRegion(presets, lib)
+          .map(({ region, countries }) => `<h3>${esc(region)}</h3>${countries
+            .map(c => `<h4><a href="${pathFor(c, lib)}">${esc(countryName(c, lib))}</a></h4><ul class="countryLinks">${lib
+              .documentsFor(c.country)
+              .map(p => `<li><a href="${pathFor(p, lib)}">${esc(lib.documentLabel(p))}</a> — ${esc(lib.formatSize(p))}</li>`)
+              .join("")}</ul>`)
+            .join("")}`)
+          .join("\n        ")}
+      </div>
+    </section>`;
+}
+
+function hubMeta(presets, lib) {
+  const title = `ID photo sizes by country — passport, visa and ID | ${lib.BRAND}`;
+  const description =
+    `Photo size, head height and background for ${presets.length} passports, visas, ID cards and ` +
+    `licences, country by country — each with a free tool that makes the photo in your browser.`;
+  const url = `${SITE}${HUB_PATH}`;
+  return metaBlock(
+    {
+      title,
+      description,
+      url,
+      jsonLd: [
+        { "@context": "https://schema.org", "@type": "CollectionPage", name: title, url, description },
+        breadcrumbLd(HUB_TRAIL)
+      ]
+    },
+    lib
+  );
+}
+
+/**
+ * No <lastmod>: it would be the build date on every URL, and Google stops trusting a
+ * lastmod that changes when the content doesn't.
+ */
 function sitemap(presets, lib) {
-  const today = new Date().toISOString().slice(0, 10);
   const urls = [
     { loc: `${SITE}/`, priority: "1.0" },
+    { loc: `${SITE}${HUB_PATH}`, priority: "0.9" },
     ...presets.map(p => ({ loc: `${SITE}${pathFor(p, lib)}`, priority: p.primary ? "0.8" : "0.7" }))
   ];
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls
-  .map(u => `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><priority>${u.priority}</priority></url>`)
+  .map(u => `  <url><loc>${u.loc}</loc><priority>${u.priority}</priority></url>`)
   .join("\n")}
 </urlset>
 `;
+}
+
+/**
+ * Written twice on purpose. Static hosts disagree about which file answers a URL with no
+ * trailing slash — the form the canonical tag, the sitemap and every inbound link use.
+ * Vercel's cleanUrls and Cloudflare Pages serve <path>.html there; others resolve
+ * <path>/index.html. Both files are identical and both carry the same canonical URL, so
+ * whichever the host picks, crawlers are pointed at one address.
+ */
+async function writePage(path, html) {
+  const dir = join(dist, path);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, "index.html"), html, "utf8");
+  await writeFile(join(dist, `${path}.html`), html, "utf8");
 }
 
 async function main() {
@@ -384,21 +518,20 @@ async function main() {
     const html = shell
       .replace(META_BLOCK, metaFor(preset, lib))
       .replace(DOC_SLOT, docFor(preset, lib, PRESETS));
-
-    // Written twice on purpose. Static hosts disagree about which file answers a URL with
-    // no trailing slash — the form the canonical tag, the sitemap and every inbound link
-    // use. Vercel's cleanUrls and Cloudflare Pages serve <path>.html there; others resolve
-    // <path>/index.html. Both files are identical and both carry the same canonical URL, so
-    // whichever the host picks, crawlers are pointed at one address.
-    const path = pathFor(preset, lib).slice(1);
-    const dir = join(dist, path);
-    await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, "index.html"), html, "utf8");
-    await writeFile(join(dist, `${path}.html`), html, "utf8");
+    await writePage(pathFor(preset, lib).slice(1), html);
   }
 
-  // The homepage gets the brand's own meta, and doesn't need the empty slot.
-  await writeFile(join(dist, "index.html"), shell.replace(META_BLOCK, homeMeta(lib)).replace(DOC_SLOT, ""), "utf8");
+  await writePage(
+    HUB_PATH.slice(1),
+    shell.replace(META_BLOCK, hubMeta(PRESETS, lib)).replace(DOC_SLOT, hubDoc(PRESETS, lib))
+  );
+
+  // The homepage gets the brand's own meta, and the country directory in the slot.
+  await writeFile(
+    join(dist, "index.html"),
+    shell.replace(META_BLOCK, homeMeta(lib)).replace(DOC_SLOT, homeDirectory(PRESETS, lib)),
+    "utf8"
+  );
   await writeFile(join(dist, "sitemap.xml"), sitemap(PRESETS, lib), "utf8");
 
   const countries = PRESETS.filter(p => p.primary && p.country !== lib.ANY_COUNTRY).length;
