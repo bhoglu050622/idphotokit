@@ -11,7 +11,7 @@ import ComplianceReport from "../ui/ComplianceReport";
 import MeasuredPreview from "../ui/MeasuredPreview";
 import { GitHubStarCard } from "../ui/GitHubStar";
 import { useComplianceReport } from "../../state/useComplianceReport";
-import { encodeJpegWithin, formatBytes } from "../../utils/encode";
+import { encodeJpegWithin, formatBytes, withDpi } from "../../utils/encode";
 import { documentLabel, documentsFor, formatFileKB, formatSize, presetTitle, slugsFor, type Preset } from "../../utils/presets";
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -23,6 +23,14 @@ function downloadBlob(blob: Blob, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/** "IMG_2041.HEIC" → "IMG_2041", without characters a file system refuses. */
+function baseName(fileName: string): string {
+  const stem = fileName.replace(/\.[^.]*$/, "");
+  // eslint-disable-next-line no-control-regex
+  const safe = stem.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim();
+  return safe || "photo";
 }
 
 async function canvasToBlob(
@@ -55,13 +63,21 @@ export default function StepDownload() {
 
   const [busy, setBusy] = useState<string | null>(null);
   const [showMarks, setShowMarks] = useState(true);
-  /** What the last size-limited download came to, so the user can see it fits. */
-  const [lastEncoded, setEncoded] = useState<{ bytes: number; fits: boolean; for?: string } | null>(null);
-  const encoded = lastEncoded?.for === photo.presetId ? lastEncoded : null;
+  /**
+   * The single-photo files, encoded along with the preview so their sizes show before the
+   * download — and the download is these exact bytes, not a fresh encode that could differ.
+   * Null while a render is under way.
+   */
+  const [files, setFiles] = useState<{ jpeg: Blob; png?: Blob; fits: boolean } | null>(null);
+  const renderRun = useRef(0);
 
   const { report, preset, measuring } = useComplianceReport();
   const fileKB = preset?.fileKB;
   const filePrefix = preset ? slugsFor(preset).join("_") : "photo";
+  const imageFile = useAppStore(s => s.imageFile);
+  const keepFileName = useAppStore(s => s.keepFileName);
+  /** The chosen photo's own name, when downloads should keep it; the extension follows the format. */
+  const ownName = keepFileName && imageFile ? baseName(imageFile.name) : undefined;
 
   const setPhoto = useAppStore(s => s.setPhoto);
   const syncToUrl = useAppStore(s => s.syncToUrl);
@@ -150,11 +166,31 @@ export default function StepDownload() {
     ctx.drawImage(source, 0, 0);
   };
 
+  /**
+   * A size-limited document gets the best JPEG quality that fits. Anything else gets full
+   * quality: an ID photo is small, and every compression artefact on a face is a reason to
+   * reject it. Both carry the DPI, so they print at the size they were made for.
+   */
+  const encodeSingle = async (tile: HTMLCanvasElement) => {
+    if (fileKB) {
+      const result = await encodeJpegWithin(tile, fileKB);
+      return { jpeg: await withDpi(result.blob, photo.dpi), fits: result.fits };
+    }
+    const [jpeg, png] = await Promise.all([
+      canvasToBlob(tile, "image/jpeg", 1),
+      canvasToBlob(tile, "image/png")
+    ]);
+    return { jpeg: await withDpi(jpeg, photo.dpi), png: await withDpi(png, photo.dpi), fits: true };
+  };
+
   /** Renders both previews from one matte, so opening either section costs nothing extra. */
   const renderPreviews = async () => {
+    const run = ++renderRun.current;
+    setFiles(null);
     setBusy("Rendering preview…");
+    let tile: HTMLCanvasElement;
     try {
-      const tile = await buildFinalTile();
+      tile = await buildFinalTile();
       drawInto(previewRef.current, tile);
       if (sheetRef.current) {
         const { sheetCanvas } = renderSheet(tile, sheet, photo.dpi);
@@ -163,24 +199,24 @@ export default function StepDownload() {
     } finally {
       setBusy(null);
     }
+    const encoded = await encodeSingle(tile);
+    if (run === renderRun.current) setFiles(encoded);
   };
 
   const downloadSingle = async (fmt: "png" | "jpeg") => {
     setBusy("Building photo…");
     try {
-      const tile = await buildFinalTile();
+      const ready = files ?? (await encodeSingle(await buildFinalTile()));
+      const blob = fmt === "png" ? ready.png : ready.jpeg;
+      if (!blob) return;
       const name = `${filePrefix}_${outPx.w}x${outPx.h}`;
-
-      if (fmt === "jpeg" && fileKB) {
-        const result = await encodeJpegWithin(tile, fileKB);
-        setEncoded({ bytes: result.blob.size, fits: result.fits, for: photo.presetId });
-        downloadBlob(result.blob, `${name}.jpg`);
-        return;
-      }
-
-      const mime = fmt === "png" ? "image/png" : "image/jpeg";
-      const blob = await canvasToBlob(tile, mime, 0.92);
-      downloadBlob(blob, photo.unit === "px" ? `${name}.${fmt}` : `${name}_${photo.dpi}dpi.${fmt}`);
+      const ext = fmt === "jpeg" ? "jpg" : "png";
+      downloadBlob(
+        blob,
+        ownName
+          ? `${ownName}.${ext}`
+          : fileKB || photo.unit === "px" ? `${name}.${ext}` : `${name}_${photo.dpi}dpi.${ext}`
+      );
     } finally {
       setBusy(null);
     }
@@ -192,8 +228,14 @@ export default function StepDownload() {
       const tile = await buildFinalTile();
       const { sheetCanvas } = renderSheet(tile, sheet, photo.dpi);
       const mime = fmt === "png" ? "image/png" : "image/jpeg";
-      const blob = await canvasToBlob(sheetCanvas, mime, 0.92);
-      downloadBlob(blob, `sheet_${sheet.paper}_${layout.count}up_${photo.dpi}dpi.${fmt}`);
+      const blob = await withDpi(await canvasToBlob(sheetCanvas, mime, 0.92), photo.dpi);
+      downloadBlob(
+        blob,
+        // "_sheet" so it doesn't land on top of the single photo saved under the same name.
+        ownName
+          ? `${ownName}_sheet.${fmt === "jpeg" ? "jpg" : "png"}`
+          : `sheet_${sheet.paper}_${layout.count}up_${photo.dpi}dpi.${fmt}`
+      );
     } finally {
       setBusy(null);
     }
@@ -202,7 +244,7 @@ export default function StepDownload() {
   useEffect(() => {
     if (imageBitmap && croppedAreaPixels) void renderPreviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageBitmap, croppedAreaPixels, bg, adj, crop, sheet, photo.dpi]);
+  }, [imageBitmap, croppedAreaPixels, bg, adj, crop, sheet, photo.dpi, photo.presetId]);
 
   if (!imageBitmap) {
     return <div className="small">Upload an image in Step 1 first.</div>;
@@ -243,15 +285,15 @@ export default function StepDownload() {
             <div className="row wrap" style={{ marginTop: 12 }}>
               {fileKB ? (
                 <button className="btn primary" onClick={() => void downloadSingle("jpeg")} disabled={!!busy}>
-                  Download JPEG ({formatFileKB(fileKB)})
+                  Download JPEG ({files ? formatBytes(files.jpeg.size) : formatFileKB(fileKB)})
                 </button>
               ) : (
                 <>
                   <button className="btn primary" onClick={() => void downloadSingle("png")} disabled={!!busy}>
-                    Download PNG
+                    Download PNG{files?.png ? ` (${formatBytes(files.png.size)})` : ""}
                   </button>
                   <button className="btn primary" onClick={() => void downloadSingle("jpeg")} disabled={!!busy}>
-                    Download JPEG
+                    Download JPEG{files ? ` (${formatBytes(files.jpeg.size)})` : ""}
                   </button>
                 </>
               )}
@@ -259,12 +301,12 @@ export default function StepDownload() {
 
             <div className="small" style={{ marginTop: 8 }}>
               {fileKB ? (
-                encoded ? (
-                  encoded.fits ? (
-                    <>Saved at {formatBytes(encoded.bytes)}, within the {formatFileKB(fileKB)} the form accepts.</>
+                files ? (
+                  files.fits ? (
+                    <>Saves at {formatBytes(files.jpeg.size)}, within the {formatFileKB(fileKB)} the form accepts.</>
                   ) : (
                     <span style={{ color: "var(--redline)" }}>
-                      Came out at {formatBytes(encoded.bytes)}, outside the {formatFileKB(fileKB)} the
+                      Comes out at {formatBytes(files.jpeg.size)}, outside the {formatFileKB(fileKB)} the
                       form accepts. A plainer background usually compresses smaller.
                     </span>
                   )
@@ -272,7 +314,10 @@ export default function StepDownload() {
                   <>Compressed to fit the {formatFileKB(fileKB)} limit the upload form sets.</>
                 )
               ) : (
-                <>Use this for online applications that ask you to upload one photo.</>
+                <>
+                  Use this for online applications that ask you to upload one photo. JPEG at full
+                  quality; both files are saved at {photo.dpi} DPI.
+                </>
               )}
             </div>
           </div>

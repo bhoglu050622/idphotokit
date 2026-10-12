@@ -22,6 +22,9 @@ type AppState = {
   /** Making a photo (the wizard), or checking one that is already finished. */
   mode: AppMode;
 
+  /** Save downloads under the chosen photo's own name: IMG_2041.jpg in, IMG_2041.jpg out. */
+  keepFileName: boolean;
+
   // source — the image every step works from: the photo as chosen, or its straightened copy
   imageFile?: File;
   imageUrl?: string; // Object URL
@@ -56,6 +59,7 @@ type AppState = {
   autoFramedFor?: string;
 
   setMode: (m: AppMode) => void;
+  setKeepFileName: (on: boolean) => void;
   setStep: (s: WizardStep) => void;
   setAutoFramedFor: (url?: string) => void;
 
@@ -147,6 +151,7 @@ export const useAppStore = create<AppState>((set, get) => {
     mode: "make",
     step: 1,
     straightened: false,
+    keepFileName: false,
 
     photo: { ...defaultPhoto },
     crop: { ...defaultCrop },
@@ -155,6 +160,7 @@ export const useAppStore = create<AppState>((set, get) => {
     sheet: { ...defaultSheet },
 
     setMode: (m) => set({ mode: m }),
+    setKeepFileName: (on) => set({ keepFileName: on }),
     setStep: (s) => set({ step: s }),
     setAutoFramedFor: (url) => set({ autoFramedFor: url }),
 

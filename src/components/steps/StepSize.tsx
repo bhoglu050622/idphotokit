@@ -130,6 +130,8 @@ export default function StepSize() {
   const setPhoto = useAppStore(s => s.setPhoto);
   const setImageFile = useAppStore(s => s.setImageFile);
   const syncToUrl = useAppStore(s => s.syncToUrl);
+  const keepFileName = useAppStore(s => s.keepFileName);
+  const setKeepFileName = useAppStore(s => s.setKeepFileName);
 
   const px = useMemo(() => sizeToPx(photo.width, photo.height, photo.unit, photo.dpi), [photo]);
   const preset = useMemo(() => findPreset(photo.presetId), [photo.presetId]);
@@ -183,6 +185,13 @@ export default function StepSize() {
           onPick={f => void setImageFile(f)}
           forWhat={preset ? presetTitle(preset) : undefined}
         />
+
+        {/* Here rather than on the download step: choosing a photo moves straight on to cropping. */}
+        <label className="checkToggle">
+          <input type="checkbox" checked={keepFileName} onChange={e => setKeepFileName(e.target.checked)} />
+          Keep my photo's file name
+          <span className="small"> — IMG_2041.jpg downloads as IMG_2041.jpg</span>
+        </label>
 
         <PrivacyNotice />
       </section>
