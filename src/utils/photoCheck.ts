@@ -21,7 +21,7 @@ import { toInches } from "./units";
 
 /** Where the advice sends a photo whose framing is off. */
 const REFRAME = "“Fix this photo” re-crops it to this document's framing.";
-const POSE_FIXES = { tilt: "“Fix this photo” levels it automatically, or retake it with the head level." };
+const POSE_FIXES = { tilt: "“Fix this photo” levels it, or retake it with the head level." };
 
 /** Longest edge sampled for the background. */
 const SAMPLE_MAX_EDGE = 640;

@@ -6,7 +6,7 @@ import { pathForPreset, presetFromPath } from "../utils/route";
 import { prefetchModnet } from "../utils/modnet";
 import { clearMatteCache } from "../utils/personMatte";
 import { analysePose } from "../utils/pose";
-import { straighten, STRAIGHTEN_MAX_DEG, STRAIGHTEN_MIN_DEG, type Straightened } from "../utils/straighten";
+import { straighten, STRAIGHTEN_MAX_DEG, STRAIGHTEN_MIN_DEG, TILT_OK_DEG, type Straightened } from "../utils/straighten";
 
 export type AppMode = "make" | "check";
 
@@ -63,7 +63,11 @@ type AppState = {
   setStep: (s: WizardStep) => void;
   setAutoFramedFor: (url?: string) => void;
 
-  setImageFile: (file?: File) => Promise<void>;
+  /**
+   * `levelTilt`: switch to the levelled copy straight away when the tilt fails the check —
+   * for "Fix this photo", where the user has already asked for the faults to be fixed.
+   */
+  setImageFile: (file?: File, opts?: { levelTilt?: boolean }) => Promise<void>;
   setStraightened: (on: boolean) => void;
   setPhoto: (p: Partial<PhotoSpec>) => void;
   setCrop: (c: Partial<CropState>) => void;
@@ -120,12 +124,16 @@ export const useAppStore = create<AppState>((set, get) => {
   };
 
   /**
-   * Measure the head's tilt and, where it is worth fixing, switch to a levelled copy.
+   * Measure the head's tilt and, where it could be fixed, prepare a levelled copy.
    *
-   * Runs after the photo is already on screen, so the crop step never waits on the face
-   * model; the photo turns level a moment later and is re-framed on the way.
+   * The copy is offered, not used: "Straighten head" on the crop step switches to it. Doing it
+   * unasked turned photos the tilt check already passes, on a degree or two that is as often
+   * landmark jitter or uneven eyes as a leaning head — and rotating the whole photo tilts the
+   * shoulders when only the head leaned.
+   *
+   * Runs after the photo is already on screen, so the crop step never waits on the face model.
    */
-  const levelHead = async (url: string, bitmap: ImageBitmap) => {
+  const levelHead = async (url: string, bitmap: ImageBitmap, levelTilt: boolean) => {
     let roll: number | null = null;
     let straight: Straightened | undefined;
     try {
@@ -144,7 +152,7 @@ export const useAppStore = create<AppState>((set, get) => {
       return;
     }
     set({ tilt: { roll, straight } });
-    if (straight) get().setStraightened(true);
+    if (straight && levelTilt && roll !== null && Math.abs(roll) > TILT_OK_DEG) get().setStraightened(true);
   };
 
   return {
@@ -164,7 +172,7 @@ export const useAppStore = create<AppState>((set, get) => {
     setStep: (s) => set({ step: s }),
     setAutoFramedFor: (url) => set({ autoFramedFor: url }),
 
-    setImageFile: async (file?: File) => {
+    setImageFile: async (file, opts) => {
       releaseImages();
 
       if (!file) {
@@ -200,7 +208,7 @@ export const useAppStore = create<AppState>((set, get) => {
         autoFramedFor: undefined,
         step: 2
       });
-      void levelHead(url, bitmap);
+      void levelHead(url, bitmap, opts?.levelTilt ?? false);
     },
 
     setStraightened: (on) => {

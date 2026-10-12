@@ -8,14 +8,14 @@ import { sizeToPx } from "../../utils/units";
 import { autoEnhanceParamsFromCanvas, applyAdjustmentsToImageData, canvasFromBitmap } from "../../utils/image";
 import { measureHead, computeFrame } from "../../utils/autoframe";
 import { findPreset, headTargetFor } from "../../utils/presets";
-import { STRAIGHTEN_MAX_DEG } from "../../utils/straighten";
+import { STRAIGHTEN_MAX_DEG, TILT_MAX_DEG, TILT_OK_DEG } from "../../utils/straighten";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 
 /**
- * What happened to the head's tilt. Straightening is automatic, so it has to say so — and
- * stay undoable, for the rare photo where the eyes are level and the head is not.
+ * The head's tilt, and the option to level it. Off until chosen; how strongly it is suggested
+ * follows the tilt check's limits (TILT_OK_DEG, TILT_MAX_DEG).
  */
 function TiltNotice({ tilt, straightened, onToggle }: {
   tilt?: Tilt;
@@ -25,14 +25,19 @@ function TiltNotice({ tilt, straightened, onToggle }: {
   if (tilt === undefined) return <div className="small tiltNote">Checking whether the head is level…</div>;
   if (tilt.roll === null) return null;
 
-  const degrees = `${Math.abs(tilt.roll).toFixed(1)}°`;
+  const angle = Math.abs(tilt.roll);
+  const degrees = `${angle.toFixed(1)}°`;
   if (tilt.straight) {
+    const verdict =
+      angle <= TILT_OK_DEG ? "within what authorities accept"
+      : angle <= TILT_MAX_DEG ? "more than most authorities like"
+      : "which most authorities reject";
     return (
       <label className="checkToggle tiltNote">
         <input type="checkbox" checked={straightened} onChange={e => onToggle(e.target.checked)} />
         Straighten head
         <span className="small">
-          {" "}— {straightened ? `levelled; it was tilted ${degrees}` : `tilted ${degrees}, which most authorities reject`}
+          {" "}— {straightened ? `levelled; it was tilted ${degrees}` : `tilted ${degrees}, ${verdict}`}
         </span>
       </label>
     );

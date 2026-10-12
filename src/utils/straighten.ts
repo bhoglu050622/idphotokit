@@ -16,6 +16,14 @@
 export const STRAIGHTEN_MIN_DEG = 1;
 
 /**
+ * The tilt check's limits (utils/compliance.ts), after ICAO 9303's ±8° roll: up to OK passes,
+ * up to MAX warns, beyond fails. Between 1° and OK, a measured tilt is as often landmark
+ * jitter or uneven eyes as a leaning head.
+ */
+export const TILT_OK_DEG = 3;
+export const TILT_MAX_DEG = 8;
+
+/**
  * Past this the photo is more likely sideways or deliberately posed than a tilted head, and
  * rotating it would uncover too much of the corners to frame cleanly.
  */

@@ -3,6 +3,7 @@ import type { HeadMetrics } from "./autoframe";
 import type { FacePose } from "./pose";
 import { backgroundsFor, DEFAULT_HEAD, formatSize, presetTitle, type Preset } from "./presets";
 import { toInches } from "./units";
+import { TILT_MAX_DEG, TILT_OK_DEG } from "./straighten";
 
 /**
  * Checks the finished photo against the selected country's published requirements.
@@ -391,10 +392,10 @@ export function poseChecks(
   checks.push({
     id: "tilt",
     label: "Head straight",
-    status: tilt <= 3 ? "pass" : tilt <= 8 ? "warn" : "fail",
+    status: tilt <= TILT_OK_DEG ? "pass" : tilt <= TILT_MAX_DEG ? "warn" : "fail",
     value: tilt < 0.5 ? "Level" : `Tilted ${tilt.toFixed(1)}° towards the ${roll > 0 ? "left" : "right"} shoulder`,
     requirement: "eyes level, head not tilted",
-    advice: tilt <= 3 ? undefined : `The head leans to one side. ${fixes.tilt}`
+    advice: tilt <= TILT_OK_DEG ? undefined : `The head leans to one side. ${fixes.tilt}`
   });
 
   // Yaw is judged; pitch only flags the extreme. The pose estimate reads 10–18° of pitch on

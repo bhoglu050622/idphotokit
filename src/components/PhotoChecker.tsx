@@ -82,7 +82,7 @@ export default function PhotoChecker() {
   }, [picked, current]);
 
   const fix = () => {
-    if (picked) void setImageFile(picked.file);
+    if (picked) void setImageFile(picked.file, { levelTilt: true });
   };
 
   return (
