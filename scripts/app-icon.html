@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  The home-screen icons: public/favicon.svg drawn full-bleed, with square corners because iOS
+  and Android round them themselves (and iOS fills a transparent corner with black). Kept as
+  a script rather than only the PNGs so they can be re-cut when the favicon changes:
+
+    chrome --headless --hide-scrollbars --window-size=512,512 --force-device-scale-factor=1 \
+           --screenshot=public/icon-512.png "file:///…/scripts/app-icon.html"
+
+  and the same with --force-device-scale-factor=0.375 for public/icon-192.png and 0.3515625
+  for public/apple-touch-icon.png (180px). Headless Chrome won't open a window that small,
+  so the smaller sizes are the 512 window scaled down. Keep the artwork in step with
+  public/favicon.svg.
+-->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #1E2B44; }
+      svg { display: block; width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+      <rect width="64" height="64" fill="#1E2B44"/>
+      <rect x="18" y="14" width="28" height="36" rx="2" fill="#F1F2EE"/>
+      <circle cx="32" cy="27" r="6" fill="#1E2B44"/>
+      <path d="M22 46c0-6.6 4.5-12 10-12s10 5.4 10 12" fill="#1E2B44"/>
+      <path d="M12 12v8M12 12h8M52 12v8M52 12h-8M12 52v-8M12 52h8M52 52v-8M52 52h-8" stroke="#A13F3B" stroke-width="2.5" stroke-linecap="square" fill="none"/>
+    </svg>
+  </body>
+</html>

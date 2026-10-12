@@ -1,0 +1,14 @@
+{
+  "name": "Right ID Photo",
+  "short_name": "Right ID Photo",
+  "description": "Passport, visa and ID photos made to spec, free and private. Runs in your browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EEF0EB",
+  "theme_color": "#1E2B44",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

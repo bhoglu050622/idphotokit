@@ -175,16 +175,27 @@ function homeMeta(lib) {
       title,
       description: lib.HOME_DESCRIPTION,
       url: `${SITE}/`,
-      jsonLd: {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        name: lib.BRAND,
-        url: `${SITE}/`,
-        applicationCategory: "PhotographyApplication",
-        operatingSystem: "Any browser",
-        description: lib.HOME_DESCRIPTION,
-        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }
-      }
+      jsonLd: [
+        // What Google reads for the site name over each result — "Right ID Photo" rather
+        // than the bare domain. Only the homepage carries it.
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: lib.BRAND,
+          alternateName: "rightidphoto.com",
+          url: `${SITE}/`
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          name: lib.BRAND,
+          url: `${SITE}/`,
+          applicationCategory: "PhotographyApplication",
+          operatingSystem: "Any browser",
+          description: lib.HOME_DESCRIPTION,
+          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }
+        }
+      ]
     },
     lib
   );
