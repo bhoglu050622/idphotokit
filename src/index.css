@@ -604,7 +604,11 @@ input[type="color"] {
 @media (max-width: 520px) {
   .specGrid th, .specGrid td { display: block; width: auto; border: 0; padding: 0; }
   .specGrid tr { display: block; padding: 7px 0; border-top: 1px solid var(--line); }
+  /* Stays flex: as a block its links run together into one unbreakable word that widens
+     the whole page. */
+  .specGrid td.sourceLinks { display: flex; }
 }
+.sourceLinks a { overflow-wrap: anywhere; }
 
 /* ---------------- GitHub star card ---------------- */
 
