@@ -35,13 +35,16 @@ const json = (status: number, body: unknown) =>
 
 async function turnstileOk(token: string, secret: string, ip: string | null): Promise<boolean> {
   const form = new FormData();
-  form.append("secret", secret);
+  // Trimmed: a secret pasted into `wrangler secret put` can pick up a trailing newline.
+  form.append("secret", secret.trim());
   form.append("response", token);
   if (ip) form.append("remoteip", ip);
   const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
-  if (!res.ok) return false;
-  const out = (await res.json()) as { success?: boolean };
-  return out.success === true;
+  const out = (await res.json().catch(() => ({}))) as { success?: boolean; "error-codes"?: string[]; hostname?: string };
+  // The codes say which side is wrong: invalid-input-secret (HTTP 400) is the Worker's
+  // secret, invalid-input-response / timeout-or-duplicate is the visitor's token.
+  if (out.success !== true) console.error("Turnstile rejected", res.status, out["error-codes"], out.hostname);
+  return res.ok && out.success === true;
 }
 
 async function feedback(request: Request, env: Env): Promise<Response> {
