@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PaperId, Unit } from "../../types";
 import { useAppStore } from "../../state/store";
+import { useFeedback } from "../../state/feedback";
 import { sizeToPx } from "../../utils/units";
 import { getCroppedCanvas } from "../../utils/cropper";
 import { applyAdjustmentsToImageData } from "../../utils/image";
@@ -60,6 +61,7 @@ export default function StepDownload() {
   const bg = useAppStore(s => s.bg);
   const sheet = useAppStore(s => s.sheet);
   const setSheet = useAppStore(s => s.setSheet);
+  const showFeedback = useFeedback(s => s.show);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [showMarks, setShowMarks] = useState(true);
@@ -459,6 +461,21 @@ export default function StepDownload() {
             Rough background edges:
             <br />– increase Soften edge
             <br />– increase Trim edge a little
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="sectionTitle">Photo rejected?</div>
+          <div className="small">
+            If an authority turned down a photo made here, the reason they gave helps fix the
+            requirements for everyone.{" "}
+            <button
+              type="button"
+              className="linkish"
+              onClick={() => showFeedback({ topic: "spec", problem: "rejected" })}
+            >
+              Tell us what they said
+            </button>
           </div>
         </div>
       </div>

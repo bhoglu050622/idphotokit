@@ -3,6 +3,8 @@ import Wizard from "./components/Wizard";
 import PhotoChecker from "./components/PhotoChecker";
 import { useAppStore, type AppMode } from "./state/store";
 import { GitHubStarLink, REPO_URL } from "./components/ui/GitHubStar";
+import FeedbackDialog from "./components/ui/FeedbackDialog";
+import { useFeedback } from "./state/feedback";
 import { BRAND } from "./brand";
 
 /** The footer strip, written as the machine-readable zone of an ID card ("I<" document code). */
@@ -24,6 +26,19 @@ export default function App() {
   useEffect(() => {
     document.documentElement.toggleAttribute("data-editing", editing);
   }, [editing]);
+
+  const showFeedback = useFeedback(s => s.show);
+  // The prerendered requirements link to #report: static HTML can't open the form itself.
+  useEffect(() => {
+    const fromHash = () => {
+      if (window.location.hash !== "#report") return;
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      showFeedback({ topic: "spec" });
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
+  }, [showFeedback]);
 
   return (
     <div className="app">
@@ -68,9 +83,14 @@ export default function App() {
           <span>
             Free and open source. No account, no tracking, no photo ever leaves your browser.
           </span>
-          <a href={REPO_URL} target="_blank" rel="noreferrer">
-            Source on GitHub
-          </a>
+          <span className="footerLinks">
+            <button type="button" className="linkish" onClick={() => showFeedback()}>
+              Send feedback
+            </button>
+            <a href={REPO_URL} target="_blank" rel="noreferrer">
+              Source on GitHub
+            </a>
+          </span>
         </div>
         {/* The matting weights are CC BY-NC-SA and every visitor downloads them, so the
             credit and licence belong on the site, not only in the README. */}
@@ -92,6 +112,8 @@ export default function App() {
           {MRZ}
         </div>
       </footer>
+
+      <FeedbackDialog />
     </div>
   );
 }

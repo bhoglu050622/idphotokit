@@ -37,3 +37,6 @@ model-images
 
 # Research workbooks (and Excel lock files) stay local
 *.xlsx
+
+# Worker secrets for `wrangler dev`
+.dev.vars

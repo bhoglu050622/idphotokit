@@ -396,6 +396,7 @@ function docFor(preset, lib, all) {
           Requirements change, and the issuing authority's own guidance is always the
           authority. These figures are transcriptions of published requirements, offered as
           a convenience and not as legal advice.
+          <a href="#report">Report a problem with these requirements</a>.
         </p>
       </div>
     </section>`;

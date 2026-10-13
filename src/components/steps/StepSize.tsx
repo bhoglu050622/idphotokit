@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Unit } from "../../types";
 import { useAppStore } from "../../state/store";
+import { useFeedback } from "../../state/feedback";
 import {
   backgroundLabel,
   backgroundsFor,
@@ -131,6 +132,7 @@ export default function StepSize() {
   const setImageFile = useAppStore(s => s.setImageFile);
   const syncToUrl = useAppStore(s => s.syncToUrl);
   const keepFileName = useAppStore(s => s.keepFileName);
+  const showFeedback = useFeedback(s => s.show);
   const setKeepFileName = useAppStore(s => s.setKeepFileName);
 
   const px = useMemo(() => sizeToPx(photo.width, photo.height, photo.unit, photo.dpi), [photo]);
@@ -222,6 +224,14 @@ export default function StepSize() {
 
         {preset && <SpecTable preset={preset} dpi={photo.dpi} />}
         {preset?.note && <div className="small specNote">{preset.note}</div>}
+        {preset && (
+          <div className="small specReport">
+            Something here wrong or out of date?{" "}
+            <button type="button" className="linkish" onClick={() => showFeedback({ topic: "spec" })}>
+              Report it
+            </button>
+          </div>
+        )}
         {preset && samePhoto.length > 0 && (
           <div className="small samePhoto">
             <span className="samePhotoLead">The same photo works for</span>{" "}
