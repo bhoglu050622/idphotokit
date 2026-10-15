@@ -20,23 +20,3 @@ export function GitHubStarLink() {
     </a>
   );
 }
-
-/**
- * Shown once the photo is downloadable — the moment someone has actually got what they came
- * for, which is the only honest time to ask for anything.
- */
-export function GitHubStarCard() {
-  return (
-    <div className="card starCard">
-      <div className="sectionTitle">Got what you needed?</div>
-      <div className="small">
-        This tool is free and always will be — no account, no watermark, no upsell. A star
-        makes it easier for the next person to find instead of paying $15 for the same thing.
-      </div>
-      <a className="btn primary starCardBtn" href={REPO_URL} target="_blank" rel="noreferrer">
-        <StarIcon size={16} />
-        Star it on GitHub
-      </a>
-    </div>
-  );
-}

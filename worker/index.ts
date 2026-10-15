@@ -7,6 +7,12 @@
  * Worker secret. In front of it: a same-origin check, Cloudflare Turnstile, and a per-IP rate
  * limit — the form is public, and the issues it makes are too.
  *
+ * GET /api/likes returns how many people said the tool worked for them; POST adds one, behind
+ * the same origin check, Turnstile and its own rate limit. The count lives in one Durable
+ * Object (LikeCounter), which applies every vote in turn, so none is lost to a race.
+ * Nothing about the voter is stored: the page remembers its own vote, the counter only a
+ * number.
+ *
  * Secrets (`npx wrangler secret put <NAME>`): GITHUB_TOKEN, a fine-grained token with
  * Issues: read and write on the repository; TURNSTILE_SECRET, the widget's secret key.
  * Locally, put them in .dev.vars; FEEDBACK_DRY_RUN=1 there returns the issue instead of
@@ -15,9 +21,14 @@
 
 import { buildIssue, parseFeedback } from "../src/utils/feedback";
 
+type RateLimit = { limit(options: { key: string }): Promise<{ success: boolean }> };
+type DurableStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
+
 type Env = {
   ASSETS: { fetch(request: Request): Promise<Response> };
-  FEEDBACK_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> };
+  FEEDBACK_LIMIT?: RateLimit;
+  LIKE_LIMIT?: RateLimit;
+  LIKES: { idFromName(name: string): unknown; get(id: unknown): DurableStub };
   GITHUB_REPO: string;
   GITHUB_TOKEN?: string;
   TURNSTILE_SECRET?: string;
@@ -104,10 +115,70 @@ async function feedback(request: Request, env: Env): Promise<Response> {
   return json(201, { number: created.number, url: created.html_url });
 }
 
+/** The one counter every vote goes to. */
+const likeCounter = (env: Env) => env.LIKES.get(env.LIKES.idFromName("site"));
+
+async function likes(request: Request, env: Env): Promise<Response> {
+  if (request.method === "GET") {
+    const res = await likeCounter(env).fetch("https://counter/");
+    return json(200, await res.json());
+  }
+  if (request.method !== "POST") return json(405, { error: "Use GET or POST." });
+
+  const site = new URL(request.url).origin;
+  if (request.headers.get("Origin") !== site) return json(403, { error: "Cross-origin requests aren't accepted." });
+
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (env.LIKE_LIMIT && ip) {
+    const { success } = await env.LIKE_LIMIT.limit({ key: ip });
+    if (!success) return json(429, { error: "Too many in a short time." });
+  }
+
+  let token = "";
+  try {
+    const body = (await request.json()) as { token?: unknown };
+    token = typeof body.token === "string" ? body.token.slice(0, 4096) : "";
+  } catch {
+    return json(400, { error: "The request couldn't be read." });
+  }
+  if (!token) return json(400, { error: "The spam check didn't finish." });
+  if (!env.TURNSTILE_SECRET) return json(503, { error: "Counting isn't set up yet." });
+  if (!(await turnstileOk(token, env.TURNSTILE_SECRET, ip))) return json(403, { error: "The spam check failed." });
+
+  const res = await likeCounter(env).fetch("https://counter/", { method: "POST" });
+  return json(200, await res.json());
+}
+
+type DurableState = {
+  storage: { get<T>(key: string): Promise<T | undefined>; put<T>(key: string, value: T): Promise<void> };
+};
+
+/**
+ * The like count. A single instance (named "site") holds one number; Durable Objects run one
+ * request at a time, so read-then-write can't lose a vote the way a key-value store would.
+ */
+export class LikeCounter {
+  private storage: DurableState["storage"];
+
+  constructor(state: DurableState) {
+    this.storage = state.storage;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    let count = (await this.storage.get<number>("count")) ?? 0;
+    if (request.method === "POST") {
+      count += 1;
+      await this.storage.put("count", count);
+    }
+    return Response.json({ count });
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === "/api/feedback") return feedback(request, env);
+    if (pathname === "/api/likes") return likes(request, env);
     if (pathname.startsWith("/api/")) return json(404, { error: "Not found." });
     return env.ASSETS.fetch(request);
   }

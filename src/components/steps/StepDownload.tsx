@@ -10,7 +10,7 @@ import { compositeWithMask } from "../../utils/background";
 import { planSheet, renderSheet } from "../../utils/sheet";
 import ComplianceReport from "../ui/ComplianceReport";
 import MeasuredPreview from "../ui/MeasuredPreview";
-import { GitHubStarCard } from "../ui/GitHubStar";
+import LikeCard from "../ui/LikeCard";
 import { useComplianceReport } from "../../state/useComplianceReport";
 import { encodeJpegWithin, formatBytes, withDpi } from "../../utils/encode";
 import { documentLabel, documentsFor, formatFileKB, formatSize, presetTitle, slugsFor, type Preset } from "../../utils/presets";
@@ -449,7 +449,7 @@ export default function StepDownload() {
       </div>
 
       <div className="col sidebar" style={{ width: 320 }}>
-        <GitHubStarCard />
+        <LikeCard />
 
         <div className="card">
           <div className="sectionTitle">If something looks off</div>

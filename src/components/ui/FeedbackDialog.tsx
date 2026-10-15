@@ -12,47 +12,7 @@ import {
   type SpecProblem
 } from "../../utils/feedback";
 import { REPO_URL } from "./GitHubStar";
-
-/**
- * Cloudflare Turnstile's always-passes key, for localhost and until the real one is set. The
- * Worker checks tokens against its secret, so a test token never files anything for real.
- */
-const TURNSTILE_TEST_KEY = "1x00000000000000000000AA";
-/**
- * The site's Turnstile widget, "Right ID Photo feedback" (rightidphoto.com and the
- * workers.dev address). Public by design; its secret lives in the Worker.
- */
-const TURNSTILE_SITE_KEY = "0x4AAAAAAFVjzMqHKRmoy3d3";
-
-type Turnstile = {
-  render: (el: HTMLElement, options: Record<string, unknown>) => string;
-  reset: (id: string) => void;
-  remove: (id: string) => void;
-};
-declare global {
-  interface Window { turnstile?: Turnstile }
-}
-
-let turnstileLoad: Promise<Turnstile> | null = null;
-
-/** Turnstile is fetched only when the form opens, so no page carries it otherwise. */
-function loadTurnstile(): Promise<Turnstile> {
-  turnstileLoad ??= new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    s.async = true;
-    s.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("Turnstile missing")));
-    s.onerror = () => reject(new Error("Turnstile failed to load"));
-    document.head.appendChild(s);
-  });
-  turnstileLoad.catch(() => { turnstileLoad = null; });
-  return turnstileLoad;
-}
-
-function siteKey(): string {
-  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
-  return local || !TURNSTILE_SITE_KEY ? TURNSTILE_TEST_KEY : TURNSTILE_SITE_KEY;
-}
+import { loadTurnstile, turnstileSiteKey } from "../../utils/turnstile";
 
 /** The "what should it be" field, worded for each problem. Absent where it means nothing. */
 const EXPECTED_FIELD: Partial<Record<SpecProblem, { label: string; placeholder: string }>> = {
@@ -97,7 +57,7 @@ function FeedbackForm({ opening, onClose }: { opening: FeedbackOpening; onClose:
       .then(ts => {
         if (cancelled || !widgetRef.current) return;
         widgetId.current = ts.render(widgetRef.current, {
-          sitekey: siteKey(),
+          sitekey: turnstileSiteKey(),
           // Shown only when Cloudflare wants a click; otherwise it passes unseen.
           appearance: "interaction-only",
           callback: (t: string) => setToken(t),

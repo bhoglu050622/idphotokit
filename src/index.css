@@ -614,9 +614,27 @@ input[type="color"] {
 
 /* ---------------- GitHub star card ---------------- */
 
-.starCard { border-color: rgba(227, 179, 65, 0.55); background: linear-gradient(var(--panel), rgba(227, 179, 65, 0.06)); }
-.starCardBtn { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; }
-.starCardBtn svg { color: var(--gold); }
+.likeCard { border-color: rgba(227, 179, 65, 0.55); background: linear-gradient(var(--panel), rgba(227, 179, 65, 0.06)); }
+.likeBtn { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; }
+.likeBtn svg { color: var(--gold); }
+.likeBtn .spinner { margin-right: 0; }
+.likeThanks {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 9px 13px;
+  border-radius: 6px;
+  background: var(--good-tint);
+  color: var(--good);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.likeTurnstile:empty { display: none; }
+.likeTurnstile { margin-top: 10px; }
+.likeCount { margin-top: 8px; }
+.likeError { margin-top: 8px; color: var(--redline); }
+.likeStar { margin-top: 10px; }
 
 /* ---------------- Stepper ---------------- */
 
