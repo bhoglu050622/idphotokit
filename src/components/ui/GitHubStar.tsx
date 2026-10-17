@@ -1,4 +1,4 @@
-export const REPO_URL = "https://github.com/vijayanandraj/idphotokit";
+export const REPO_URL = "https://github.com/bhoglu050622/idphotokit";
 
 function StarIcon({ size = 15 }: { size?: number }) {
   return (

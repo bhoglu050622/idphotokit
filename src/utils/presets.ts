@@ -262,10 +262,13 @@ export function browserCountry(languages: readonly string[]): Country | undefine
   return preferred ? COUNTRIES.find(c => c.iso2 === preferred) : undefined;
 }
 
-/** The document to start on: the main document of the browser's country, else India's passport. */
+/**
+ * The document the tool opens on. PhotoJhat is India-first, so this is India's passport
+ * even when the browser names another country. `languages` is kept so callers do not change.
+ */
 export function defaultPresetId(languages: readonly string[] = []): string {
-  const country = browserCountry(languages);
-  return documentsFor(country?.name ?? "India")[0]?.id ?? PRESETS[0].id;
+  void languages;
+  return documentsFor("India")[0]?.id ?? PRESETS[0].id;
 }
 
 /** Target chin-to-crown fraction for a preset — the published figure, or the middle of the range. */

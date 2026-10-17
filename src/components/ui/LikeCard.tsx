@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { REPO_URL } from "./GitHubStar";
-import { turnstileToken } from "../../utils/turnstile";
 
-/** Below this the count reads as "hardly anyone uses it", so it isn't shown. */
-const SHOW_COUNT_FROM = 10;
-
-/** This browser's own vote, so the button stays pressed and nobody counts twice by accident. */
-const LIKED_KEY = "rightidphoto:liked";
+/** This browser's own note. Nothing is sent — the static site has no counter. */
+const LIKED_KEY = "photojhat:liked";
 
 function readLiked(): boolean {
   try {
@@ -27,78 +23,35 @@ function ThumbIcon() {
   );
 }
 
-const people = (n: number) => n.toLocaleString("en");
-
 /**
- * "It worked for me": a one-tap thanks that needs no account, shown once the photo is
- * downloadable — the only honest moment to ask. Most people here have no GitHub account, so
- * this replaces asking for a star; the star stays as a link for those who do.
+ * A local "it worked" mark. PhotoJhat is a static site, so the tap is remembered only in
+ * this browser. There is no counter and no request.
  */
 export default function LikeCard() {
-  const [count, setCount] = useState<number | null>(null);
   const [liked, setLiked] = useState(readLiked);
-  const [state, setState] = useState<"idle" | "sending" | "error">("idle");
-  const widgetRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/likes")
-      .then(r => (r.ok ? r.json() : null))
-      .then((out: { count?: number } | null) => {
-        if (!cancelled && typeof out?.count === "number") setCount(out.count);
-      })
-      .catch(() => { /* No count is fine: the button still works. */ });
-    return () => { cancelled = true; };
-  }, []);
-
-  const like = async () => {
-    if (liked || state === "sending" || !widgetRef.current) return;
-    setState("sending");
-    try {
-      const token = await turnstileToken(widgetRef.current);
-      const res = await fetch("/api/likes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const out = (await res.json()) as { count?: number };
-      if (typeof out.count === "number") setCount(out.count);
-      setLiked(true);
-      setState("idle");
-      try { localStorage.setItem(LIKED_KEY, "1"); } catch { /* remembered for this visit only */ }
-    } catch {
-      setState("error");
-    }
+  const like = () => {
+    setLiked(true);
+    try { localStorage.setItem(LIKED_KEY, "1"); } catch { /* this visit only */ }
   };
-
-  const showCount = count !== null && count >= SHOW_COUNT_FROM;
 
   return (
     <div className="card likeCard">
       <div className="sectionTitle">Did it work?</div>
       <div className="small">
-        This tool is free and always will be — no account, no watermark, no upsell. One tap
-        tells the next person it does the job.
+        Free, with no account and no watermark. The tap stays on this device — nothing is sent.
       </div>
 
       {liked ? (
         <div className="likeThanks" role="status">
           <ThumbIcon />
-          {showCount ? `Thanks — you're one of ${people(count)}` : "Thanks for letting us know"}
+          Thanks for letting us know
         </div>
       ) : (
-        <button type="button" className="btn primary likeBtn" onClick={() => void like()} disabled={state === "sending"}>
-          {state === "sending" ? <span className="spinner" /> : <ThumbIcon />}
+        <button type="button" className="btn primary likeBtn" onClick={like}>
+          <ThumbIcon />
           It worked for me
         </button>
-      )}
-
-      <div ref={widgetRef} className="likeTurnstile" />
-
-      {state === "error" && <div className="small likeError">That didn't go through. Try again in a moment.</div>}
-      {showCount && !liked && (
-        <div className="small likeCount">{people(count)} people say it worked for them.</div>
       )}
 
       <div className="small likeStar">

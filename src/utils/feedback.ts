@@ -75,8 +75,15 @@ function quote(text: string): string {
 
 const inline = (text: string) => text.replace(/@(?=[A-Za-z0-9])/g, "@​").replace(/\s+/g, " ");
 
-/** Checks a submission from the page; returns the reason it is refused, or the cleaned payload. */
-export function parseFeedback(raw: unknown): { ok: true; value: FeedbackPayload } | { ok: false; error: string } {
+/**
+ * Checks a submission from the page; returns the reason it is refused, or the cleaned payload.
+ * The static site opens a GitHub issue and has no spam widget, so it passes
+ * `requireToken: false`. The Worker still requires one.
+ */
+export function parseFeedback(
+  raw: unknown,
+  opts: { requireToken?: boolean } = {}
+): { ok: true; value: FeedbackPayload } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") return { ok: false, error: "Expected a JSON object." };
   const r = raw as Record<string, unknown>;
 
@@ -98,7 +105,9 @@ export function parseFeedback(raw: unknown): { ok: true; value: FeedbackPayload 
     token: clean(r.token, 4096)
   };
 
-  if (!value.token) return { ok: false, error: "The spam check didn't finish. Wait a moment and try again." };
+  if (opts.requireToken !== false && !value.token) {
+    return { ok: false, error: "The spam check didn't finish. Wait a moment and try again." };
+  }
   if (problem === "missing" && !value.expected) return { ok: false, error: "Say which document is missing." };
   if (topic !== "spec" && value.details.length < 10) return { ok: false, error: "Add a few words about what happened." };
   if (topic === "spec" && !value.details && !value.expected && !value.source) {

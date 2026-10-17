@@ -131,8 +131,10 @@ export default function CountryPicker({ selected, isCustom, onSelect, onCustom }
   const pills = useMemo(() => {
     const own =
       typeof navigator === "undefined" ? undefined : browserCountry(navigator.languages ?? [navigator.language])?.name;
+    const featured = PRIMARY_PRESETS.filter(p => p.common).map(p => p.country);
     const names = [
-      ...PRIMARY_PRESETS.filter(p => p.common).map(p => p.country),
+      "India",
+      ...featured.filter(n => n !== "India"),
       ...(own ? [own] : []),
       ...(selected ? [selected.country] : [])
     ].filter(n => n !== ANY_COUNTRY);
@@ -195,10 +197,10 @@ export default function CountryPicker({ selected, isCustom, onSelect, onCustom }
       </div>
       {!searching && (
         <div className="searchHints small">
-          Try <button type="button" className="linkish" onClick={() => setQuery("schengen visa")}>schengen visa</button>,{" "}
-          <button type="button" className="linkish" onClick={() => setQuery("pan card")}>pan card</button>,{" "}
-          <button type="button" className="linkish" onClick={() => setQuery("green card")}>green card</button> or a size like{" "}
-          <button type="button" className="linkish" onClick={() => setQuery("3x4")}>3x4</button>
+          Try <button type="button" className="linkish" onClick={() => setQuery("pan card")}>pan card</button>,{" "}
+          <button type="button" className="linkish" onClick={() => setQuery("aadhaar")}>aadhaar</button>,{" "}
+          <button type="button" className="linkish" onClick={() => setQuery("oci")}>oci</button> or a size like{" "}
+          <button type="button" className="linkish" onClick={() => setQuery("35x45")}>35x45</button>
         </div>
       )}
 

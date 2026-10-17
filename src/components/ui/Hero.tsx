@@ -15,8 +15,18 @@ import { presetFromPath } from "../../utils/route";
 
 type Tile = { value: string; label: string };
 
-/** The kinds of document covered, as a reader would name them. */
-const KINDS = ["Passports", "Visas", "Residence permits", "ID cards", "Driving licences", "Student cards", "Licences"];
+/** The kinds of document covered, as a reader would name them. India leads. */
+const KINDS = ["Indian passport", "Visa", "PAN", "Aadhaar", "OCI", "Exam photos"];
+
+/** The documents the homepage puts in front of the rest of the catalogue. */
+const INDIA_LINKS: { href: string; label: string }[] = [
+  { href: "/photo/india", label: "Passport" },
+  { href: "/photo/india/e-visa", label: "e-Visa" },
+  { href: "/photo/india/pan-card", label: "PAN" },
+  { href: "/photo/india/aadhaar", label: "Aadhaar" },
+  { href: "/photo/india/oci-card-2x2-in", label: "OCI" },
+  { href: "/exam", label: "Exam photos" }
+];
 
 /**
  * The top of step 1.
@@ -75,11 +85,14 @@ export default function Hero({ preset }: { preset?: Preset }) {
         <span className="heroPromise">{TAGLINE_PROMISE}</span>
       </h1>
       <p className="heroSub">
-        Your photo is framed, cleaned up and checked inside this browser tab — it is never sent
-        to a server, so there is nothing to leak and nothing to delete later. And every
-        document's own rules are built in: the size, how much of the frame your head fills,
-        where your eyes sit, the background colour, even the file size an upload form will take.
+        Indian passport, visa, PAN, Aadhaar and OCI photos are framed and checked in this tab.
+        The photo never leaves the browser. Other countries are still here when you need them.
       </p>
+      <nav className="indiaStrip" aria-label="Indian documents">
+        {INDIA_LINKS.map(link => (
+          <a key={link.href} href={link.href}>{link.label}</a>
+        ))}
+      </nav>
       <Tiles
         tiles={[
           { value: String(PRESETS.length), label: "documents" },
