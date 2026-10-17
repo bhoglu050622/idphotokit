@@ -1,7 +1,7 @@
 {
-  "name": "Right ID Photo",
-  "short_name": "Right ID Photo",
-  "description": "Passport, visa and ID photos made to spec, free and private. Runs in your browser.",
+  "name": "PhotoJhat",
+  "short_name": "PhotoJhat",
+  "description": "Indian passport, visa, PAN, Aadhaar and exam photos, made to spec in your browser.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#EEF0EB",

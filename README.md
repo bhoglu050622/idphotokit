@@ -1,33 +1,41 @@
-# Right ID Photo
+# PhotoJhat
 
-ID photos, made to spec — for passports, visas, ID and residence cards, driving licences,
-tax cards and the DV lottery. Free, private, and entirely in the browser.
+Indian passport, visa, PAN, Aadhaar and OCI photos, plus government exam photograph and
+signature files. Free, private, and entirely in the browser. The catalogue still covers
+other countries.
 
-If it's useful to you, a ⭐ on the repo helps other people find it.
+**Live site: https://photojhat.pages.dev/**
 
 What it does:
 - Upload an image (no server upload)
-- Pick the document from 965 across 166 countries plus standard sizes. Search by country,
-  document or size ("schengen visa", "pan card", "3x4"). Each sets the size, the head
-  height and, where published, the space above the head, the eye line and the upload
-  file-size limit. Or enter a custom size + DPI.
+- Open on India’s passport. Indian visa, PAN, Aadhaar and OCI are linked first on the homepage.
+  The rest of the catalogue is still searchable by country, document or size.
 - Check the result against that document's rule, with the measurements drawn on the preview
 - Crop with manual controls + automatic head framing
 - Optional Auto Enhance (brightness/contrast/saturation baseline)
-- Background removal (multiclass selfie segmentation, hair-aware) + choose background color
-- Download:
-  - Single photo (PNG / JPEG)
-  - Print sheet (A4 / A3 / 4x6 / Custom) with auto-pack + cut lines
-
-**Try it: https://rightidphoto.com/**
+- Background removal (MODNet, kept from the upstream project) + choose background color
+- Download a single photo or a print sheet
+- **Exam resizer** at `/exam`: pick SSC CGL, SSC CHSL, UPSC CSE, IBPS PO, IBPS Clerk, SBI PO,
+  NEET UG, JEE Main or RRB NTPC, upload a photograph and a signature, and download JPEGs in
+  the kilobyte range that exam’s notice prints. Pixel sizes the notice does not state are
+  marked unverified. Specs live in [`src/data/exams.ts`](src/data/exams.ts), one source URL
+  and date per exam. JPEG quality is chosen by binary search (adapted from the MIT project
+  [jeswintesting-spec/ImEditor](https://github.com/jeswintesting-spec/ImEditor)). A very flat
+  scan that is still under the minimum at the highest quality gets a JPEG comment so the
+  file reaches that minimum; the picture itself is not changed, and the page says so.
 
 Every document has its own page: a country's primary document at `/photo/<country>` and the
-rest at `/photo/<country>/<document>`, e.g.
-[/photo/india](https://rightidphoto.com/photo/india),
-[/photo/india/pan-card-online](https://rightidphoto.com/photo/india/pan-card-online) or
-[/photo/united-states/dv-lottery](https://rightidphoto.com/photo/united-states/dv-lottery).
-Each opens the tool preset to that document and sets out its published requirements with a
-diagram. The old `/passport-photo/<country>` paths redirect here.
+rest at `/photo/<country>/<document>`, for example
+[/photo/india](https://photojhat.pages.dev/photo/india),
+[/photo/india/pan-card](https://photojhat.pages.dev/photo/india/pan-card),
+[/photo/india/aadhaar](https://photojhat.pages.dev/photo/india/aadhaar) and
+[/photo/india/oci-card-2x2-in](https://photojhat.pages.dev/photo/india/oci-card-2x2-in).
+Each exam has its own page too, for example
+[/exam/ibps-po](https://photojhat.pages.dev/exam/ibps-po).
+The old `/passport-photo/<country>` paths redirect to `/photo/<country>`.
+
+This is a fork of [vijayanandraj/idphotokit](https://github.com/vijayanandraj/idphotokit) (MIT).
+The original project name and domain are not used here.
 
 ---
 
@@ -52,7 +60,7 @@ about 16MB, then cached by the browser. Nothing is downloaded for the crop-only 
 ## Features
 
 ### Step 1: Upload + Size
-- 965 documents across 166 countries, searchable by country, document or size, with each country's documents grouped by category (passport, visa, residence, ID card, licence…). They live in two spreadsheets, [`specs/countries.csv`](specs/countries.csv) and [`specs/documents.csv`](specs/documents.csv). Add or correct one without touching code; see [`specs/README.md`](specs/README.md)
+- 966 documents across 166 countries, searchable by country, document or size, with each country's documents grouped by category (passport, visa, residence, ID card, licence…). They live in two spreadsheets, [`specs/countries.csv`](specs/countries.csv) and [`specs/documents.csv`](specs/documents.csv). Add or correct one without touching code; see [`specs/README.md`](specs/README.md)
 - Each preset carries two things, not one:
   - the **print size** (35×45mm across most of the world, 2×2in in the US, 50×70mm in
     Canada, 33×48mm in China, 26×32mm in Spain)
@@ -162,8 +170,37 @@ indexed as separate pages, and the per-document specs are the most searched-for 
 here. Set `SITE_URL` to override the absolute URLs:
 
 ```bash
-SITE_URL=https://your-domain.example npm run build
+SITE_URL=https://photojhat.pages.dev npm run build
 ```
+
+`SITE_URL` defaults to `https://photojhat.pages.dev` when it is unset. Set it if you attach
+a custom domain, so canonical URLs and `sitemap.xml` match that domain.
+
+## Cloudflare Pages
+
+PhotoJhat is a static site. `npm run build` writes `dist/`. There is no Worker, no Durable
+Object, and no paid service in the deploy. The old `wrangler.jsonc` (custom domains, feedback
+API, like counter) is not part of this fork’s deploy.
+
+In the Cloudflare Pages project:
+
+| Setting | Value |
+| --- | --- |
+| Framework preset | None |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Root directory | `/` (repository root) |
+| Node.js version | 20 or newer (22 works) |
+| Environment variable | `SITE_URL` = `https://photojhat.pages.dev` (optional; this is already the default) |
+
+Pages reads `dist/_redirects` and `dist/_headers` (copied from `public/` by Vite). Hashed
+assets and the MODNet file are cached for a year. Unknown paths fall back to `index.html`.
+Pretty URLs work because each document and exam is written both as `path/index.html` and
+`path.html`.
+
+`public/robots.txt` points at `https://photojhat.pages.dev/sitemap.xml`. The sitemap is
+generated into `dist/sitemap.xml` by the prerender step and lists `/`, `/exam`, every exam
+and every document.
 
 ### The link-preview image
 
@@ -195,8 +232,10 @@ and two are worth knowing about before you build a product on this:
 - **ONNX Runtime Web**, **React**, **Vite**, **Zustand**, **react-easy-crop** — MIT or
   Apache-2.0.
 
-The name **Right ID Photo** and its logo are not covered by the MIT license. Forks are
-welcome to use the code, under a name of their own.
+The name **PhotoJhat** is this fork’s. The upstream name is not used.
+JPEG quality search in `src/utils/fitRange.ts` is adapted from
+[jeswintesting-spec/ImEditor](https://github.com/jeswintesting-spec/ImEditor)
+(MIT, copyright 2026 Jeswin Sunny). The licence notice is in that file.
 
 The specifications in `specs/documents.csv` are transcriptions of published
 government requirements. They are provided as a convenience and are not legal advice —

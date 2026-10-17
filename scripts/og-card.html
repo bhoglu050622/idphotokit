@@ -87,19 +87,19 @@
         ctx.fillText("[+]", 72, 104);
         ctx.font = "700 24px 'IBM Plex Sans', system-ui, sans-serif";
         ctx.fillStyle = PAPER;
-        ctx.fillText("Right ID Photo", 122, 104);
+        ctx.fillText("PhotoJhat", 122, 104);
 
         ctx.fillStyle = PAPER;
         ctx.font = "700 62px 'IBM Plex Sans', system-ui, sans-serif";
-        ctx.fillText("ID photos,", 72, 196);
+        ctx.fillText("Indian ID photos,", 72, 196);
         // The promise in the pass green, as on the page's headline.
         ctx.fillStyle = GOOD;
-        ctx.fillText("privacy first.", 72, 266);
+        ctx.fillText("on your device.", 72, 266);
 
         ctx.fillStyle = "rgba(238,240,235,0.78)";
         ctx.font = "400 25px 'IBM Plex Sans', system-ui, sans-serif";
-        ctx.fillText("Passport, visa, ID card, licence — framed", 72, 326);
-        ctx.fillText("and checked against each document's rule.", 72, 362);
+        ctx.fillText("Passport, PAN, visa, OCI — and exam", 72, 326);
+        ctx.fillText("files sized to the official notice.", 72, 362);
 
         // Privacy pill — the one claim worth putting on the card
         const pillW = 500, pillH = 46, pillY = 410;
@@ -122,7 +122,7 @@
 
         ctx.fillStyle = "rgba(238,240,235,0.6)";
         ctx.font = "500 18px 'IBM Plex Mono', ui-monospace, monospace";
-        ctx.fillText("965 documents  ·  166 countries  ·  no sign-in  ·  free", 72, 512);
+        ctx.fillText("India first  ·  exam files  ·  no sign-in  ·  free", 72, 512);
 
         // ---- right column: a photo in its frame, with the head-height rule drawn on it
         const px = 760, py = 112, pw = 330, ph = 424;
@@ -205,7 +205,7 @@
         // ---- the machine-readable strip, as in the app's footer
         ctx.fillStyle = "rgba(238,240,235,0.22)";
         ctx.font = "500 21px 'IBM Plex Mono', ui-monospace, monospace";
-        ctx.fillText("I<UTORIGHTIDPHOTO<<PASSPORT<VISA<ID<LICENCE<<FREE<<<<<", 72, 582);
+        ctx.fillText("I<UTOPHOTOJHAT<<PASSPORT<VISA<PAN<OCI<<EXAM<<FREE<<<<", 72, 582);
 
         return ctx.canvas;
       }

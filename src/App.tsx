@@ -6,6 +6,8 @@ import { GitHubStarLink, REPO_URL } from "./components/ui/GitHubStar";
 import FeedbackDialog from "./components/ui/FeedbackDialog";
 import { useFeedback } from "./state/feedback";
 import { BRAND } from "./brand";
+import ExamTool from "./components/ExamTool";
+import { isExamPath } from "./utils/examRoute";
 
 /** The footer strip, written as the machine-readable zone of an ID card ("I<" document code). */
 const MRZ = `I<UTO${BRAND.toUpperCase().replace(/\s+/g, "")}<<PASSPORT<VISA<ID<LICENCE<<FREE<<NO<UPLOAD<<<<<<<<`;
@@ -16,6 +18,7 @@ const MODES: Array<{ id: AppMode; label: string; hint: string }> = [
 ];
 
 export default function App() {
+  const examMode = isExamPath();
   const mode = useAppStore(s => s.mode);
   const setMode = useAppStore(s => s.setMode);
   const editing = useAppStore(s => s.mode === "make" && s.step > 1);
@@ -49,6 +52,7 @@ export default function App() {
           <span className="mark">[+]</span>
           {BRAND}
         </a>
+        <a className="examNav" href="/exam">Exam photos</a>
 
         <div className="topbarRight">
           <span className="trustbadge">
@@ -60,22 +64,28 @@ export default function App() {
       </header>
 
       <main className="main">
-        <div className="modeSwitch" role="tablist" aria-label="What to do">
-          {MODES.map(m => (
-            <button
-              key={m.id}
-              type="button"
-              role="tab"
-              aria-selected={mode === m.id}
-              className={`modeTab ${mode === m.id ? "active" : ""}`}
-              onClick={() => setMode(m.id)}
-            >
-              {m.label} <span className="modeHint">{m.hint}</span>
-            </button>
-          ))}
-        </div>
+        {examMode ? (
+          <ExamTool />
+        ) : (
+          <>
+            <div className="modeSwitch" role="tablist" aria-label="What to do">
+              {MODES.map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m.id}
+                  className={`modeTab ${mode === m.id ? "active" : ""}`}
+                  onClick={() => setMode(m.id)}
+                >
+                  {m.label} <span className="modeHint">{m.hint}</span>
+                </button>
+              ))}
+            </div>
 
-        {mode === "make" ? <Wizard /> : <PhotoChecker />}
+            {mode === "make" ? <Wizard /> : <PhotoChecker />}
+          </>
+        )}
       </main>
 
       <footer className="footer">

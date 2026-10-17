@@ -24,7 +24,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
 
 /** Change this once, after pointing a real domain at the deployment. */
-const SITE = process.env.SITE_URL?.replace(/\/+$/, "") || "https://rightidphoto.com";
+const SITE = process.env.SITE_URL?.replace(/\/+$/, "") || "https://photojhat.pages.dev";
 
 const META_BLOCK = /<!-- meta:start[\s\S]*?<!-- meta:end -->/;
 const DOC_SLOT = "<!-- country-doc -->";
@@ -38,7 +38,8 @@ async function loadPresets() {
     stdin: {
       contents: `export { PRESETS, ANY_COUNTRY, slugsFor, documentsFor, documentsByCategory, REGIONS, documentLabel, presetTitle, backgroundsFor, backgroundLabel, formatSize, formatFileKB, sourceLabels, samePhotoAs, DEFAULT_HEAD } from "./src/utils/presets";
                  export { sizeToPx, toInches } from "./src/utils/units";
-                 export { BRAND, TAGLINE, HOME_DESCRIPTION } from "./src/brand";`,
+                 export { BRAND, TAGLINE, HOME_DESCRIPTION } from "./src/brand";
+                 export { EXAMS } from "./src/data/exams";`,
       resolveDir: root,
       loader: "ts"
     },
@@ -110,7 +111,7 @@ function metaFor(preset, lib) {
     applicationCategory: "PhotographyApplication",
     operatingSystem: "Any browser",
     description,
-    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }
+    offers: { "@type": "Offer", price: "0", priceCurrency: "INR" }
   };
 
   return metaBlock({ title: pageTitle, description, url, jsonLd: [jsonLd, breadcrumbLd(crumbsFor(preset, lib))] }, lib);
@@ -169,20 +170,17 @@ function metaBlock({ title, description, url, jsonLd }, lib) {
 
 /** The homepage speaks to every document, so its meta comes from brand.ts rather than a preset. */
 function homeMeta(lib) {
-  const title = `${lib.BRAND} — passport, visa and ID photos, free and private`;
+  const title = `${lib.BRAND} — Indian passport, PAN, visa and exam photos, free`;
   return metaBlock(
     {
       title,
       description: lib.HOME_DESCRIPTION,
       url: `${SITE}/`,
       jsonLd: [
-        // What Google reads for the site name over each result — "Right ID Photo" rather
-        // than the bare domain. Only the homepage carries it.
         {
           "@context": "https://schema.org",
           "@type": "WebSite",
           name: lib.BRAND,
-          alternateName: "rightidphoto.com",
           url: `${SITE}/`
         },
         {
@@ -193,7 +191,7 @@ function homeMeta(lib) {
           applicationCategory: "PhotographyApplication",
           operatingSystem: "Any browser",
           description: lib.HOME_DESCRIPTION,
-          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }
+          offers: { "@type": "Offer", price: "0", priceCurrency: "INR" }
         }
       ]
     },
@@ -420,9 +418,42 @@ function countriesByRegion(presets, lib) {
  * and a crawler weighs a page nothing links to as one that doesn't matter. Collapsed behind
  * one line so it doesn't crowd the tool; the links are in the HTML either way.
  */
+const INDIA_LINKS = [
+  ["/photo/india", "Indian passport — 35 × 45 mm"],
+  ["/photo/india/e-visa", "Indian e-Visa"],
+  ["/photo/india/visa", "Indian visa"],
+  ["/photo/india/pan-card", "PAN card"],
+  ["/photo/india/pan-card-online", "PAN card online upload"],
+  ["/photo/india/aadhaar", "Aadhaar — 35 × 45 mm"],
+  ["/photo/india/oci-card-2x2-in", "OCI card"],
+  ["/photo/india/oci-card-online", "OCI card online"],
+  ["/exam", "Exam photograph and signature"]
+];
+
 function homeDirectory(presets, lib) {
   const countries = presets.filter(p => p.primary && p.country !== lib.ANY_COUNTRY).length;
   return `<section class="countryDoc directory">
+      <div class="countryDocInner">
+        <h2>Indian passport, visa, PAN, Aadhaar and OCI</h2>
+        <p>
+          These are the sizes the homepage opens on. Each link is that document’s own page:
+          the print or upload size, the head-height rule where one is published, and the tool
+          preset to it. Aadhaar’s page says what UIDAI actually prints — a 35 × 45 mm colour
+          photograph — and does not invent a file-size limit.
+        </p>
+        <ul class="countryLinks">
+          ${INDIA_LINKS.map(([href, label]) => `<li><a href="${href}">${esc(label)}</a></li>`).join("")}
+        </ul>
+        <h2>Government exam photograph and signature</h2>
+        <p>
+          SSC, UPSC, IBPS, SBI, NEET UG, JEE Main and RRB each have a page. The pixel size and
+          the kilobyte range come from that exam’s notice. Where the notice does not state
+          pixels, the page says so instead of guessing.
+        </p>
+        <ul class="countryLinks">
+          ${lib.EXAMS.map(e => `<li><a href="/exam/${e.slug}">${esc(e.name)}</a> — ${esc(e.cycle)}</li>`).join("")}
+        </ul>
+      </div>
       <details class="countryDocInner">
         <summary><h2>Photo sizes by country</h2></summary>
         <p>
@@ -488,10 +519,139 @@ function hubMeta(presets, lib) {
  * No <lastmod>: it would be the build date on every URL, and Google stops trusting a
  * lastmod that changes when the content doesn't.
  */
+function specCells(spec) {
+  if (spec.kind === "live") {
+    return [
+      ["What you upload", "Nothing. The form captures the photograph live."],
+      ["What the notice says", esc(spec.guidance)]
+    ];
+  }
+  return [
+    ["Format", esc(spec.formatNote)],
+    ["File size", `${spec.minKB}–${spec.maxKB} KB${spec.kbVerified ? "" : " (unverified)"}`],
+    ["Pixels", spec.width
+      ? `${spec.width} × ${spec.height}${spec.pixelsVerified ? "" : " — unverified"}`
+      : "Not stated in the notice"],
+    ["How to read the pixels", esc(spec.pixelNote)],
+    ["Background", esc(spec.background)]
+  ];
+}
+
+function examArticle(exam) {
+  const rows = (title, spec) => `<h3>${esc(title)}</h3>
+          <table class="specTable">
+            <caption>${esc(exam.name)} ${esc(title.toLowerCase())}</caption>
+            <tbody>
+              ${specCells(spec).map(([k, v]) => `<tr><th scope="row">${k}</th><td>${v}</td></tr>`).join("\n              ")}
+            </tbody>
+          </table>`;
+  return `<section class="countryDoc">
+      <div class="countryDocInner">
+        ${crumbsNav([
+          { name: "Home", path: "/" },
+          { name: "Exam photos", path: "/exam" },
+          { name: exam.shortName, path: `/exam/${exam.slug}` }
+        ])}
+        <h2>${esc(exam.name)} photograph and signature</h2>
+        <p>
+          ${esc(exam.cycle)}, published by ${esc(exam.authority)}.
+          The source is <a href="${esc(exam.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(exam.sourceTitle)}</a>
+          (${esc(exam.sourceDate)}, ${esc(exam.sourceDateMeaning)}).
+          The tool above makes the JPEG in this browser. It does not upload the file.
+        </p>
+        ${rows("Photograph", exam.photo)}
+        ${rows("Signature", exam.signature)}
+        <h3>Common reasons this exam rejects the file</h3>
+        <ul>
+          ${exam.rejections.map(r => `<li>${esc(r)}</li>`).join("\n          ")}
+        </ul>
+        <h3>Questions people ask about this notice</h3>
+        ${exam.faq.map(f => `<h4>${esc(f.q)}</h4><p>${esc(f.a)}</p>`).join("\n        ")}
+        <h3>From the same notice</h3>
+        <ul>
+          ${exam.noticePoints.map(p => `<li>${esc(p)}</li>`).join("\n          ")}
+        </ul>
+        <p class="countryDocNote">
+          Notices are replaced. If the date above is not the exam you are filling, read the
+          current PDF before you upload. A figure marked unverified is a conversion or a gap,
+          not a number the notice printed.
+        </p>
+      </div>
+    </section>`;
+}
+
+function examIndexDoc(exams) {
+  return `<section class="countryDoc">
+      <div class="countryDocInner">
+        ${crumbsNav([{ name: "Home", path: "/" }, { name: "Exam photos", path: "/exam" }])}
+        <h2>Indian government exam photograph and signature sizes</h2>
+        <p>
+          Each exam below is one notice, read for the photograph and the signature: the file
+          type, the kilobyte range, and the pixel size when the notice prints one. SSC CGL,
+          SSC CHSL and RRB NTPC Undergraduate capture the photograph live, so those pages
+          make a signature file and say so. Where a notice gives no pixel size, the page
+          leaves it unmarked rather than copying another exam.
+        </p>
+        <ul class="countryLinks">
+          ${exams.map(e => `<li><a href="/exam/${e.slug}">${esc(e.name)} photo and signature size</a> — ${esc(e.cycle)}</li>`).join("")}
+        </ul>
+      </div>
+    </section>`;
+}
+
+function examMeta(exam, lib) {
+  const photo = exam.photo.kind === "live"
+    ? "live photograph, no file upload"
+    : `${exam.photo.minKB}–${exam.photo.maxKB} KB`;
+  const title = `${exam.name} photo and signature size | ${lib.BRAND}`;
+  const description =
+    `${exam.name} (${exam.cycle}): photograph ${photo}, signature ${exam.signature.minKB}–${exam.signature.maxKB} KB. ` +
+    `Make the JPEG in your browser from the official notice. Nothing is uploaded.`;
+  const url = `${SITE}/exam/${exam.slug}`;
+  return metaBlock({
+    title,
+    description,
+    url,
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: exam.faq.map(f => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a }
+        }))
+      },
+      breadcrumbLd([
+        { name: "Home", path: "/" },
+        { name: "Exam photos", path: "/exam" },
+        { name: exam.shortName, path: `/exam/${exam.slug}` }
+      ])
+    ]
+  }, lib);
+}
+
+function examIndexMeta(exams, lib) {
+  const title = `Exam photo and signature size — SSC, UPSC, IBPS, NEET, JEE | ${lib.BRAND}`;
+  const description =
+    `Photograph and signature file sizes for SSC CGL, SSC CHSL, UPSC, IBPS PO, IBPS Clerk, SBI PO, NEET UG, JEE Main and RRB NTPC, each from its own notice.`;
+  return metaBlock({
+    title,
+    description,
+    url: `${SITE}/exam`,
+    jsonLd: [
+      { "@context": "https://schema.org", "@type": "CollectionPage", name: title, url: `${SITE}/exam`, description },
+      breadcrumbLd([{ name: "Home", path: "/" }, { name: "Exam photos", path: "/exam" }])
+    ]
+  }, lib);
+}
+
 function sitemap(presets, lib) {
   const urls = [
     { loc: `${SITE}/`, priority: "1.0" },
-    { loc: `${SITE}${HUB_PATH}`, priority: "0.9" },
+    { loc: `${SITE}/exam`, priority: "0.9" },
+    ...lib.EXAMS.map(e => ({ loc: `${SITE}/exam/${e.slug}`, priority: "0.9" })),
+    { loc: `${SITE}${HUB_PATH}`, priority: "0.8" },
     ...presets.map(p => ({ loc: `${SITE}${pathFor(p, lib)}`, priority: p.primary ? "0.8" : "0.7" }))
   ];
 
@@ -538,6 +698,17 @@ async function main() {
     shell.replace(META_BLOCK, hubMeta(PRESETS, lib)).replace(DOC_SLOT, hubDoc(PRESETS, lib))
   );
 
+  for (const exam of lib.EXAMS) {
+    await writePage(
+      `exam/${exam.slug}`,
+      shell.replace(META_BLOCK, examMeta(exam, lib)).replace(DOC_SLOT, examArticle(exam))
+    );
+  }
+  await writePage(
+    "exam",
+    shell.replace(META_BLOCK, examIndexMeta(lib.EXAMS, lib)).replace(DOC_SLOT, examIndexDoc(lib.EXAMS))
+  );
+
   // The homepage gets the brand's own meta, and the country directory in the slot.
   await writeFile(
     join(dist, "index.html"),
@@ -547,7 +718,7 @@ async function main() {
   await writeFile(join(dist, "sitemap.xml"), sitemap(PRESETS, lib), "utf8");
 
   const countries = PRESETS.filter(p => p.primary && p.country !== lib.ANY_COUNTRY).length;
-  console.log(`prerendered ${PRESETS.length} document pages for ${countries} countries + sitemap.xml (site: ${SITE})`);
+  console.log(`prerendered ${PRESETS.length} document pages for ${countries} countries, ${lib.EXAMS.length} exam pages + sitemap.xml (site: ${SITE})`);
 }
 
 await main();

@@ -1,5 +1,5 @@
 {
-  "name": "passport-photo",
+  "name": "photojhat",
   "private": true,
   "version": "0.0.0",
   "license": "MIT",
@@ -10,9 +10,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",
-    "prerender": "node scripts/prerender.mjs",
-    "deploy": "npm run build && wrangler deploy",
-    "cf:dev": "npm run build && wrangler dev"
+    "prerender": "node scripts/prerender.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.18",

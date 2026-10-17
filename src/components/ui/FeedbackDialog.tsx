@@ -12,7 +12,7 @@ import {
   type SpecProblem
 } from "../../utils/feedback";
 import { REPO_URL } from "./GitHubStar";
-import { loadTurnstile, turnstileSiteKey } from "../../utils/turnstile";
+import { buildIssue } from "../../utils/feedback";
 
 /** The "what should it be" field, worded for each problem. Absent where it means nothing. */
 const EXPECTED_FIELD: Partial<Record<SpecProblem, { label: string; placeholder: string }>> = {
@@ -40,44 +40,18 @@ function FeedbackForm({ opening, onClose }: { opening: FeedbackOpening; onClose:
   const [expected, setExpected] = useState("");
   const [source, setSource] = useState("");
   const [details, setDetails] = useState("");
-  const [token, setToken] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const dialogRef = useRef<HTMLDialogElement | null>(null);
-  const widgetRef = useRef<HTMLDivElement | null>(null);
-  const widgetId = useRef<string | null>(null);
 
   useEffect(() => {
     dialogRef.current?.showModal();
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    loadTurnstile()
-      .then(ts => {
-        if (cancelled || !widgetRef.current) return;
-        widgetId.current = ts.render(widgetRef.current, {
-          sitekey: turnstileSiteKey(),
-          // Shown only when Cloudflare wants a click; otherwise it passes unseen.
-          appearance: "interaction-only",
-          callback: (t: string) => setToken(t),
-          "expired-callback": () => setToken(""),
-          "error-callback": () => setToken("")
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setStatus({ kind: "error", message: "The spam check couldn't load.", fallback: true });
-      });
-    return () => {
-      cancelled = true;
-      if (widgetId.current) window.turnstile?.remove(widgetId.current);
-    };
-  }, []);
-
   const expectedField = topic === "spec" && problem ? EXPECTED_FIELD[problem] : undefined;
   const aboutDocument = topic === "spec" && problem !== "missing";
 
-  const submit = async (e: FormEvent) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault();
     const payload: FeedbackPayload = {
       topic,
@@ -88,29 +62,21 @@ function FeedbackForm({ opening, onClose }: { opening: FeedbackOpening; onClose:
       source: topic === "spec" ? source : undefined,
       details,
       page: window.location.pathname,
-      token
+      token: ""
     };
-    // The same checks the Worker makes, so most mistakes are caught without a round trip.
-    const checked = parseFeedback({ ...payload, token: token || "pending" });
+    const checked = parseFeedback(payload, { requireToken: false });
     if (!checked.ok) return setStatus({ kind: "error", message: checked.error });
-    if (!token) return setStatus({ kind: "error", message: "The spam check is still running — try again in a moment." });
 
-    setStatus({ kind: "sending" });
-    try {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const out = (await res.json().catch(() => ({}))) as { error?: string; number?: number; url?: string };
-      if (!res.ok) throw new Error(out.error ?? `It couldn't be sent (${res.status}).`);
-      setStatus({ kind: "sent", number: out.number, url: out.url });
-    } catch (err) {
-      setStatus({ kind: "error", message: err instanceof Error ? err.message : "It couldn't be sent.", fallback: true });
-      // A Turnstile token is good for one check; get a fresh one for the retry.
-      setToken("");
-      if (widgetId.current) window.turnstile?.reset(widgetId.current);
+    const issue = buildIssue(checked.value, window.location.origin);
+    const url = new URL(`${REPO_URL}/issues/new`);
+    url.searchParams.set("title", issue.title);
+    url.searchParams.set("body", issue.body);
+    const opened = window.open(url.toString(), "_blank", "noopener,noreferrer");
+    if (!opened) {
+      setStatus({ kind: "error", message: "The browser blocked the new tab.", fallback: true });
+      return;
     }
+    setStatus({ kind: "sent", url: url.toString() });
   };
 
   return (
@@ -129,7 +95,7 @@ function FeedbackForm({ opening, onClose }: { opening: FeedbackOpening; onClose:
       {status.kind === "sent" ? (
         <div className="feedbackBody">
           <p className="feedbackDone">
-            Thanks — it's filed{status.number ? ` as issue #${status.number}` : ""}.
+            A GitHub issue draft is open in a new tab. Nothing was uploaded.
           </p>
           {status.url && (
             <div className="small">
@@ -141,7 +107,7 @@ function FeedbackForm({ opening, onClose }: { opening: FeedbackOpening; onClose:
           </div>
         </div>
       ) : (
-        <form className="feedbackBody" onSubmit={e => void submit(e)} noValidate>
+        <form className="feedbackBody" onSubmit={submit} noValidate>
           <div>
             <label>What is it about?</label>
             <div className="pills" role="radiogroup">
@@ -230,11 +196,9 @@ function FeedbackForm({ opening, onClose }: { opening: FeedbackOpening; onClose:
           </div>
 
           <div className="small">
-            This is posted publicly as a GitHub issue, with no name attached and never your photo.
+            This opens a public GitHub issue draft, with no name attached and never your photo.
             Please leave out personal details.
           </div>
-
-          <div ref={widgetRef} className="feedbackTurnstile" />
 
           {status.kind === "error" && (
             <div className="small feedbackError" role="alert">
