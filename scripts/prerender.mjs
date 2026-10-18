@@ -114,7 +114,13 @@ function metaFor(preset, lib) {
     offers: { "@type": "Offer", price: "0", priceCurrency: "INR" }
   };
 
-  return metaBlock({ title: pageTitle, description, url, jsonLd: [jsonLd, breadcrumbLd(crumbsFor(preset, lib))] }, lib);
+  return metaBlock({
+    title: pageTitle,
+    description,
+    url,
+    robots: preset.country === "India" ? undefined : "noindex,follow",
+    jsonLd: [jsonLd, breadcrumbLd(crumbsFor(preset, lib))]
+  }, lib);
 }
 
 const countryName = (preset, lib) => (preset.country === lib.ANY_COUNTRY ? "Standard sizes" : preset.name);
@@ -148,9 +154,10 @@ function crumbsNav(trail) {
 }
 
 /** Title, description, canonical, Open Graph, Twitter and JSON-LD for one page. */
-function metaBlock({ title, description, url, jsonLd }, lib) {
+function metaBlock({ title, description, url, jsonLd, robots }, lib) {
   return `<title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}" />
+    ${robots ? `<meta name="robots" content="${esc(robots)}" />` : ""}
     <link rel="canonical" href="${url}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="${esc(lib.BRAND)}" />
@@ -506,6 +513,7 @@ function hubMeta(presets, lib) {
       title,
       description,
       url,
+      robots: "noindex,follow",
       jsonLd: [
         { "@context": "https://schema.org", "@type": "CollectionPage", name: title, url, description },
         breadcrumbLd(HUB_TRAIL)
@@ -651,8 +659,9 @@ function sitemap(presets, lib) {
     { loc: `${SITE}/`, priority: "1.0" },
     { loc: `${SITE}/exam`, priority: "0.9" },
     ...lib.EXAMS.map(e => ({ loc: `${SITE}/exam/${e.slug}`, priority: "0.9" })),
-    { loc: `${SITE}${HUB_PATH}`, priority: "0.8" },
-    ...presets.map(p => ({ loc: `${SITE}${pathFor(p, lib)}`, priority: p.primary ? "0.8" : "0.7" }))
+    ...presets
+      .filter(p => p.country === "India")
+      .map(p => ({ loc: `${SITE}${pathFor(p, lib)}`, priority: p.primary ? "0.9" : "0.8" }))
   ];
 
   return `<?xml version="1.0" encoding="UTF-8"?>
