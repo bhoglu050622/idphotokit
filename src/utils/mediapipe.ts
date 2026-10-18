@@ -121,28 +121,31 @@ export type FaceBox = {
  * Face detection helper used by auto-framing.
  * Coordinates are in pixels of the canvas that was passed in.
  */
-export async function detectFaceOnCanvas(canvas: HTMLCanvasElement): Promise<FaceBox | null> {
+export async function detectFacesOnCanvas(canvas: HTMLCanvasElement): Promise<FaceBox[]> {
   const fd = await getFaceDetector();
   const res = fd.detect(canvas);
-  if (!res.detections || res.detections.length === 0) return null;
+  if (!res.detections || res.detections.length === 0) return [];
 
   // Prefer the largest face, falling back to detector confidence for ties.
-  const det = res.detections
+  return res.detections
     .slice()
     .sort((a, b) => {
       const areaA = (a.boundingBox?.width ?? 0) * (a.boundingBox?.height ?? 0);
       const areaB = (b.boundingBox?.width ?? 0) * (b.boundingBox?.height ?? 0);
       if (areaB !== areaA) return areaB - areaA;
       return (b.categories?.[0]?.score ?? 0) - (a.categories?.[0]?.score ?? 0);
-    })[0];
+    })
+    .flatMap(det => {
+      const bb = det.boundingBox;
+      if (!bb) return [];
+      // BlazeFace keypoint order: right eye, left eye, nose tip, mouth, right ear, left ear.
+      const kp = det.keypoints;
+      const rightEye = kp?.[0] ? { x: kp[0].x, y: kp[0].y } : undefined;
+      const leftEye = kp?.[1] ? { x: kp[1].x, y: kp[1].y } : undefined;
+      return [{ x: bb.originX, y: bb.originY, w: bb.width, h: bb.height, rightEye, leftEye }];
+    });
+}
 
-  const bb = det.boundingBox;
-  if (!bb) return null;
-
-  // BlazeFace keypoint order: right eye, left eye, nose tip, mouth, right ear, left ear.
-  const kp = det.keypoints;
-  const rightEye = kp?.[0] ? { x: kp[0].x, y: kp[0].y } : undefined;
-  const leftEye = kp?.[1] ? { x: kp[1].x, y: kp[1].y } : undefined;
-
-  return { x: bb.originX, y: bb.originY, w: bb.width, h: bb.height, rightEye, leftEye };
+export async function detectFaceOnCanvas(canvas: HTMLCanvasElement): Promise<FaceBox | null> {
+  return (await detectFacesOnCanvas(canvas))[0] ?? null;
 }

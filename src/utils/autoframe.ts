@@ -150,7 +150,10 @@ export async function measureHead(bitmap: ImageBitmap, cacheKey = "autoframe"): 
   if (crownY !== null && crownY <= highestPlausibleCrown) {
     crownFromMask = true;
   } else {
-    crownY = face.y - face.h * 0.5;
+    // BlazeFace starts near the forehead, not at the hair. Leave a conservative extra
+    // margin when the matte cannot distinguish grey/dark hair from a similar background.
+    // A slightly loose crop is recoverable; clipped hair is not.
+    crownY = face.y - face.h * 0.65;
   }
 
   const chinY = face.y + face.h * CHIN_FACTOR;

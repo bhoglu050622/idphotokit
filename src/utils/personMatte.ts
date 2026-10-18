@@ -1,5 +1,6 @@
 import { matteCanvas } from "./modnet";
 import { segmentCanvas, type Mask } from "./mediapipe";
+import { inspectMatteIntegrity, repairSubjectAlpha, type MatteIntegrity } from "./matting";
 
 /**
  * One way to ask "which pixels are the person?".
@@ -14,6 +15,7 @@ export type MatteSource = "modnet" | "fallback";
 export type PersonMatte = {
   mask: Mask;
   source: MatteSource;
+  integrity: MatteIntegrity;
 };
 
 // Matting costs a couple of seconds, and the inputs that change most often — background
@@ -28,13 +30,27 @@ export async function personMatte(src: HTMLCanvasElement, key: string): Promise<
   if (cached && cached.key === key) return cached.value;
 
   try {
-    const value: PersonMatte = { mask: await matteCanvas(src), source: "modnet" };
+    const mask = await matteCanvas(src);
+    const integrity = inspectMatteIntegrity(mask.data, mask.width, mask.height);
+    integrity.repairedPixels = repairSubjectAlpha(mask.data, mask.width, mask.height);
+    const value: PersonMatte = {
+      mask,
+      source: "modnet",
+      integrity
+    };
     cached = { key, value };
     return value;
   } catch (err) {
     console.warn("Matting model unavailable, falling back to selfie segmentation:", err);
     // Deliberately not cached: a failure here is usually a slow or interrupted download, and
     // caching it would pin this crop to the worse cut-out for the rest of the session.
-    return { mask: await segmentCanvas(src), source: "fallback" };
+    const mask = await segmentCanvas(src);
+    const integrity = inspectMatteIntegrity(mask.data, mask.width, mask.height);
+    integrity.repairedPixels = repairSubjectAlpha(mask.data, mask.width, mask.height);
+    return {
+      mask,
+      source: "fallback",
+      integrity
+    };
   }
 }

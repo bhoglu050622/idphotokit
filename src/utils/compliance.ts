@@ -366,10 +366,10 @@ export function poseChecks(
   if (!pose) {
     return [{
       id: "pose",
-      label: "Head straight",
+      label: "Face pose",
       status: "unknown",
       value: "Not measured",
-      advice: "No face could be measured. Check by eye that the head is level and facing the camera."
+      advice: "Face pose could not be measured. Check by eye that the head is level and facing the camera."
     }];
   }
 
@@ -397,6 +397,10 @@ export function poseChecks(
     requirement: "eyes level, head not tilted",
     advice: tilt <= TILT_OK_DEG ? undefined : `The head leans to one side. ${fixes.tilt}`
   });
+
+  // BlazeFace eye keypoints can measure roll when the detailed face mesh misses. Stop here:
+  // they cannot honestly judge turn, expression, closed eyes or cheek lighting.
+  if (pose.detail === "eyes") return checks;
 
   // Yaw is judged; pitch only flags the extreme. The pose estimate reads 10–18° of pitch on
   // straight-on studio portraits (its face model and the camera's perspective both add to
@@ -484,13 +488,22 @@ function backgroundCheck(bg: BackgroundSpec, preset?: Preset): Check {
   }
 
   const match = accepted.find(b => sameColor(b.color, bg.color));
+  const cutoutRisk = bg.integrity?.damaged;
   return {
     id: "background",
-    label: "Background",
-    status: match ? "pass" : "warn",
-    value: match ? match.label : `Custom (${bg.color})`,
+    label: "Background & cutout",
+    status: cutoutRisk ? "warn" : match ? "pass" : "warn",
+    value: `${match ? match.label : `Custom (${bg.color})`}${
+      cutoutRisk
+        ? `; ${bg.integrity!.repairedPixels} suspect pixel${bg.integrity!.repairedPixels === 1 ? "" : "s"} repaired`
+        : ""
+    }`,
     requirement: names,
-    advice: match ? undefined : `${preset ? presetTitle(preset) : "This document"} asks for ${names}.`
+    advice: cutoutRisk
+      ? `${match ? "The background colour is right" : `The background colour is ${bg.color}, not ${names}`}, but the matte found enclosed holes in the subject. Check hair, beard and clothing at full size; use the original background or retake against more contrast if any part is missing.`
+      : match
+        ? undefined
+        : `${preset ? presetTitle(preset) : "This document"} asks for ${names}.`
   };
 }
 
