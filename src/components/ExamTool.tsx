@@ -119,7 +119,8 @@ function FileCard({ exam, spec }: { exam: Exam; spec: UploadSpec }) {
         panX: pan.x,
         panY: pan.y,
         minKB: spec.minKB,
-        maxKB: spec.maxKB
+        maxKB: spec.maxKB,
+        dimensionMode: spec.label === "Signature" ? spec.dimensionMode : "fixed"
       });
       setResult(fit);
     } catch (err) {
@@ -179,6 +180,7 @@ function FileCard({ exam, spec }: { exam: Exam; spec: UploadSpec }) {
           data-slot={spec.label === "Photograph" ? "photo" : "signature"}
           type="file"
           accept="image/*"
+          aria-label={`Upload ${exam.name} ${spec.label.toLowerCase()}`}
           onChange={e => setFile(e.target.files?.[0])}
         />
       </label>
@@ -234,7 +236,7 @@ function FileCard({ exam, spec }: { exam: Exam; spec: UploadSpec }) {
 
       {result && (
         <div
-          className={`examResult ${result.fits ? "ok" : "bad"}`}
+          className={`examResult ${result.fits && !result.padded ? "ok" : result.padded ? "warn" : "bad"}`}
           role="status"
           data-result-fits={result.fits ? "yes" : "no"}
           data-result-bytes={result.bytes}
@@ -242,14 +244,29 @@ function FileCard({ exam, spec }: { exam: Exam; spec: UploadSpec }) {
           data-result-height={result.height}
           data-slot-result={spec.label === "Photograph" ? "photo" : "signature"}
         >
-          <strong>{result.fits ? "Inside the published range" : "Outside the published range"}</strong>
+          <strong>
+            {result.padded
+              ? "KB range reached with metadata fallback"
+              : result.fits
+                ? "Inside the published range"
+                : "Outside the published range"}
+          </strong>
           <span className="mono">
             {result.width} × {result.height} px · {kb(result.bytes)} · quality {result.quality.toFixed(2)}
           </span>
           {result.padded && (
             <span className="small">
-              A JPEG comment was added so this simple image could reach {spec.minKB} KB.
-              The picture is unchanged. A busier scan usually reaches the minimum without the comment.
+              Real image data at the highest quality and allowed dimensions was still under
+              {` ${spec.minKB} KB`}, so a JPEG comment was added as a last resort. Some exam
+              portals strip or reject metadata. Prefer rescanning at higher resolution or
+              crop more of the handwritten signature into the frame before using this file.
+            </span>
+          )}
+          {result.grew && !result.padded && (
+            <span className="small">
+              The signature was increased to {result.width} × {result.height} px to reach the
+              minimum with real image data. The notice describes its pixel size as{" "}
+              {spec.dimensionMode === "minimum" ? "a minimum" : spec.dimensionMode === "preferred" ? "preferred" : "unverified"}.
             </span>
           )}
           {result.scaled && (
