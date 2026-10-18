@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
-    "test": "tsx --test src/utils/*.test.ts && npm run build && node --test scripts/seo.test.mjs",
+    "test": "tsx --test src/utils/*.test.ts && node --test scripts/indexnow.test.mjs && npm run build && node --test scripts/seo.test.mjs",
+    "indexnow": "node scripts/indexnow.mjs",
     "test:browser": "node scripts/browser-qa.mjs",
     "typecheck": "tsc -b",
     "lint": "eslint .",

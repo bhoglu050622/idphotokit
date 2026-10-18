@@ -1,8 +1,30 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
+import { KEY } from "./indexnow.mjs";
 
+const distDir = fileURLToPath(new URL("../dist/", import.meta.url));
 const dist = new URL("../dist/", import.meta.url);
+
+async function htmlFiles(dir) {
+  const found = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) found.push(...await htmlFiles(path));
+    else if (entry.name.endsWith(".html")) found.push(path);
+  }
+  return found;
+}
+
+function expectedCanonical(file) {
+  let rel = relative(distDir, file).split(sep).join("/");
+  if (rel.endsWith("/index.html")) rel = rel.slice(0, -"/index.html".length);
+  else if (rel.endsWith(".html")) rel = rel.slice(0, -".html".length);
+  if (rel === "" || rel === "index") return "https://photojhat.pages.dev/";
+  return `https://photojhat.pages.dev/${rel}`;
+}
 
 test("sitemap contains only India and exam routes", async () => {
   const xml = await readFile(new URL("sitemap.xml", dist), "utf8");
@@ -34,4 +56,26 @@ test("international document pages are noindex, follow", async () => {
     assert.match(international, /<meta name="robots" content="noindex,follow"\s*\/?>/);
   }
   assert.doesNotMatch(india, /name="robots" content="noindex/);
+});
+
+test("every built page canonicalises to photojhat.pages.dev", async () => {
+  const files = await htmlFiles(distDir);
+  assert.ok(files.length > 100, `expected the prerendered site, found ${files.length} HTML files`);
+  const mismatches = [];
+  for (const file of files) {
+    const html = await readFile(file, "utf8");
+    const canonicals = [...html.matchAll(/<link rel="canonical" href="([^"]+)"/g)].map(match => match[1]);
+    const expected = expectedCanonical(file);
+    if (canonicals.length !== 1 || canonicals[0] !== expected) {
+      mismatches.push(`${relative(distDir, file)} -> ${canonicals.join(", ") || "(none)"} (expected ${expected})`);
+    }
+  }
+  assert.deepEqual(mismatches, []);
+});
+
+test("robots.txt points at the PhotoJhat sitemap and the IndexNow key is at the site root", async () => {
+  const robots = await readFile(new URL("robots.txt", dist), "utf8");
+  assert.match(robots, /^Sitemap: https:\/\/photojhat\.pages\.dev\/sitemap\.xml\s*$/m);
+  const key = await readFile(new URL(`${KEY}.txt`, dist), "utf8");
+  assert.equal(key.trim(), KEY);
 });
