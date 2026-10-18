@@ -200,7 +200,28 @@ Pretty URLs work because each document and exam is written both as `path/index.h
 
 `public/robots.txt` points at `https://photojhat.pages.dev/sitemap.xml`. The sitemap is
 generated into `dist/sitemap.xml` by the prerender step and lists `/`, `/exam`, every exam
-and every document.
+page, and the Indian document pages. Other document pages stay reachable and carry
+`noindex, follow`. Every built page has one canonical URL on `https://photojhat.pages.dev`.
+
+### IndexNow
+
+Bing, Yandex and Seznam can be told about the sitemap without an account.
+[IndexNow](https://www.indexnow.org/documentation) checks that this site hosts the key
+file, then accepts the URL list:
+
+https://photojhat.pages.dev/3bed6b749652d2f5712f87a90cc57725.txt
+
+The file is `public/3bed6b749652d2f5712f87a90cc57725.txt`, so Cloudflare Pages serves it
+at the site root. Submit only after that deploy is live, or the API rejects the key:
+
+```bash
+npm run build && npm run indexnow
+```
+
+`npm run indexnow` reads `dist/sitemap.xml` and POSTs those URLs to
+`https://api.indexnow.org/indexnow` with host `photojhat.pages.dev`. HTTP 200 or 202
+means the batch was accepted. It does not submit the `noindex` international pages,
+because those are not in the sitemap.
 
 ### The link-preview image
 
