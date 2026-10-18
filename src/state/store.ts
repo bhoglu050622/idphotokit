@@ -104,8 +104,9 @@ const defaultBg: BackgroundSpec = {
   color: defaultBackgroundColor(findPreset(defaultPhoto.presetId)),
   // Matting already produces a properly soft edge; extra blur only smears hair detail.
   featherPx: 0,
-  // Deliberately low: higher values trade hair detail for a cleaner fringe.
-  edgeTighten: 0.15
+  // Preserve low-contrast grey hair and beard. The slider remains available for a visible
+  // colour fringe, but destructive trimming is never applied before the user asks for it.
+  edgeTighten: 0
 };
 
 const defaultSheet: SheetSpec = {
@@ -204,6 +205,7 @@ export const useAppStore = create<AppState>((set, get) => {
         straightened: false,
         // A new photo starts from a clean crop; the old one's framing means nothing here.
         crop: { ...defaultCrop },
+        bg: { ...get().bg, integrity: undefined },
         croppedAreaPixels: undefined,
         autoFramedFor: undefined,
         step: 2
@@ -221,6 +223,7 @@ export const useAppStore = create<AppState>((set, get) => {
       // moved when the photo turned.
       set({
         straightened: use !== original,
+        bg: { ...get().bg, integrity: undefined },
         imageUrl: use.url,
         imageBitmap: use.bitmap,
         croppedAreaPixels: undefined

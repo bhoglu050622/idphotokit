@@ -31,8 +31,15 @@ export type BackgroundSpec = {
   mode: BackgroundMode;
   color: string;
   featherPx: number;
-  /** 0..1 — pulls the cut-out edge in to remove a colour fringe, without eroding the mask. */
+  /** 0..1 — pulls the cut-out edge in to remove a colour fringe. */
   edgeTighten: number;
+  /** Diagnostics from the matte used for the current crop. */
+  integrity?: {
+    holes: number;
+    holePixels: number;
+    repairedPixels: number;
+    damaged: boolean;
+  };
 };
 
 

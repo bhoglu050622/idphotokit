@@ -92,8 +92,9 @@ export default function StepBackground() {
 
       // REMOVED preview
       {
-        const { mask, source } = await personMatte(base, matteKey);
+        const { mask, source, integrity } = await personMatte(base, matteKey);
         setDegraded(source === "fallback");
+        setBg({ integrity });
 
         const removed = compositeWithMask(
           base,
@@ -236,8 +237,8 @@ export default function StepBackground() {
               {preset
                 ? `${presetName} accepts ${backgroundLabel(preset).toLowerCase()} — already applied.`
                 : "No country selected, so plain white is used."}{" "}
-              Raise Trim edge only if a rim of the old background still shows — it thins fine
-              hair as it climbs.
+              Trim edge starts at zero. Raise it only if a rim of the old background still
+              shows — it can thin fine or grey hair as it climbs.
             </div>
           </div>
 
@@ -251,6 +252,14 @@ export default function StepBackground() {
             <div className="small" style={{ marginTop: 8, color: "var(--redline)" }}>
               The matting model couldn't load, so a simpler cut-out is being used — hair and
               accessories may be rougher. Check your connection and reload to get the better one.
+            </div>
+          )}
+          {bg.mode === "REMOVED" && bg.integrity?.damaged && (
+            <div className="small" style={{ marginTop: 8, color: "var(--redline)" }}>
+              The model found {bg.integrity.holes} enclosed gap{bg.integrity.holes === 1 ? "" : "s"} in
+              the person and repaired {bg.integrity.repairedPixels} pixel
+              {bg.integrity.repairedPixels === 1 ? "" : "s"}. Inspect hair, beard and clothing
+              at full size before downloading.
             </div>
           )}
         </div>

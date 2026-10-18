@@ -106,7 +106,10 @@ export default function StepCrop() {
     const dx = Math.round((c.width - dw) / 2);
     const dy = Math.round((c.height - dh) / 2);
 
-    ctx.clearRect(0, 0, c.width, c.height);
+    // An uncropped source can be a little narrower than the passport aspect. Paint the
+    // unused canvas white instead of exposing the preview surface as a grey strip.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(imageBitmap, dx, dy, dw, dh);
 
     const img = ctx.getImageData(0, 0, c.width, c.height);
@@ -223,6 +226,9 @@ export default function StepCrop() {
             onCropSizeChange={setCropSize}
             showGrid={false}
             cropShape="rect"
+            // react-easy-crop shades everything outside the crop with a giant grey
+            // box-shadow. On a narrow passport image that becomes a stray side strip.
+            style={{ cropAreaStyle: { color: "transparent" } }}
           />
           {framing && (
             <div className="cropBusy" role="status">

@@ -35,8 +35,135 @@ export type Matte = {
   fg: Float32Array;
 };
 
+export type MatteIntegrity = {
+  /** Enclosed low-alpha regions that look like holes cut through the person. */
+  holes: number;
+  holePixels: number;
+  /** Pixels restored by the conservative hole repair. */
+  repairedPixels: number;
+  /** Enough missing area that the user should inspect the cutout before downloading. */
+  damaged: boolean;
+};
+
 function clamp01(a: number) {
   return a < 0 ? 0 : a > 1 ? 1 : a;
+}
+
+type AlphaIsland = {
+  pixels: number[];
+  boundaryMean: number;
+  touchesEdge: boolean;
+  width: number;
+  height: number;
+  compactness: number;
+};
+
+/**
+ * Find low-alpha islands. A true background region reaches an image edge; a white hole
+ * punched into hair, beard or clothing is enclosed by confident foreground.
+ */
+function lowAlphaIslands(alpha: Float32Array, w: number, h: number): AlphaIsland[] {
+  const seen = new Uint8Array(alpha.length);
+  const islands: AlphaIsland[] = [];
+  const LOW = 0.22;
+  const queue = new Int32Array(alpha.length);
+
+  for (let start = 0; start < alpha.length; start++) {
+    if (seen[start] || alpha[start] > LOW) continue;
+    let q0 = 0;
+    let q1 = 0;
+    queue[q1++] = start;
+    seen[start] = 1;
+    const pixels: number[] = [];
+    let boundary = 0;
+    let boundaryN = 0;
+    let touchesEdge = false;
+    let minX = w;
+    let minY = h;
+    let maxX = 0;
+    let maxY = 0;
+
+    while (q0 < q1) {
+      const i = queue[q0++];
+      pixels.push(i);
+      const x = i % w;
+      const y = Math.floor(i / w);
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesEdge = true;
+
+      const neighbours = [
+        x > 0 ? i - 1 : -1,
+        x + 1 < w ? i + 1 : -1,
+        y > 0 ? i - w : -1,
+        y + 1 < h ? i + w : -1
+      ];
+      for (const n of neighbours) {
+        if (n < 0 || seen[n]) continue;
+        if (alpha[n] <= LOW) {
+          seen[n] = 1;
+          queue[q1++] = n;
+        } else {
+          boundary += alpha[n];
+          boundaryN++;
+        }
+      }
+    }
+
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    islands.push({
+      pixels,
+      boundaryMean: boundaryN ? boundary / boundaryN : 0,
+      touchesEdge,
+      width,
+      height,
+      compactness: pixels.length / (width * height)
+    });
+  }
+  return islands;
+}
+
+function repairableIsland(island: AlphaIsland, maxHole: number): boolean {
+  const aspect = Math.max(island.width / island.height, island.height / island.width);
+  return (
+    !island.touchesEdge &&
+    island.pixels.length <= maxHole &&
+    island.boundaryMean >= 0.72 &&
+    aspect <= 3 &&
+    island.compactness >= 0.35
+  );
+}
+
+/** Inspect the model output before repair, so the compliance report can flag a risky cutout. */
+export function inspectMatteIntegrity(alpha: Float32Array, w: number, h: number): MatteIntegrity {
+  const maxHole = Math.max(16, Math.round(w * h * 0.012));
+  const holes = lowAlphaIslands(alpha, w, h).filter(island => repairableIsland(island, maxHole));
+  const holePixels = holes.reduce((sum, island) => sum + island.pixels.length, 0);
+  return {
+    holes: holes.length,
+    holePixels,
+    repairedPixels: 0,
+    damaged: holes.length >= 2 || holePixels >= Math.max(12, w * h * 0.001)
+  };
+}
+
+/**
+ * Restore only small, enclosed holes. Open background and large gaps around the body are
+ * untouched. Mutates `alpha` so every consumer (framing, preview and download) agrees.
+ */
+export function repairSubjectAlpha(alpha: Float32Array, w: number, h: number): number {
+  const maxHole = Math.max(16, Math.round(w * h * 0.012));
+  let repaired = 0;
+  for (const island of lowAlphaIslands(alpha, w, h)) {
+    if (!repairableIsland(island, maxHole)) continue;
+    const fill = Math.max(0.86, Math.min(0.98, island.boundaryMean));
+    for (const i of island.pixels) alpha[i] = fill;
+    repaired += island.pixels.length;
+  }
+  return repaired;
 }
 
 /**
@@ -278,7 +405,9 @@ export function refineMatte(
   }
 
   if (opts.tighten > 0) {
-    const cut = 0.35 * clamp01(opts.tighten);
+    // Keep this deliberately gentle. Low-contrast grey hair and beard often sit in the
+    // 0.15–0.35 range, so the old 0.35 curve erased them at the default slider position.
+    const cut = 0.15 * clamp01(opts.tighten);
     for (let i = 0; i < n; i++) alpha[i] = clamp01((alpha[i] - cut) / (1 - cut));
   }
 

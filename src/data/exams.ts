@@ -19,6 +19,8 @@ export type UploadSpec = {
   width?: number;
   height?: number;
   pixelsVerified: boolean;
+  /** How the notice describes the pixel figure, when one is present. */
+  dimensionMode?: "fixed" | "preferred" | "minimum" | "unverified";
   pixelNote: string;
   minKB: number;
   maxKB: number;
@@ -70,6 +72,7 @@ export const EXAMS: Exam[] = [
       width: 472,
       height: 157,
       pixelsVerified: false,
+      dimensionMode: "unverified",
       pixelNote:
         "Paragraph 9.6 says the signature should be about 6.0 cm wide by 2.0 cm high. It does not state pixels or DPI. 472 × 157 px is that rectangle at 200 DPI, so the pixel size is unverified.",
       minKB: 10,
@@ -131,6 +134,7 @@ export const EXAMS: Exam[] = [
       width: 472,
       height: 157,
       pixelsVerified: false,
+      dimensionMode: "unverified",
       pixelNote:
         "Paragraph 9.6 says about 6.0 cm (width) × 2.0 cm (height). No pixel size or DPI is printed. 472 × 157 px is 6.0 × 2.0 cm at 200 DPI and is unverified.",
       minKB: 10,
@@ -268,6 +272,7 @@ export const EXAMS: Exam[] = [
       width: 140,
       height: 60,
       pixelsVerified: true,
+      dimensionMode: "preferred",
       pixelNote: "“Dimensions 140 x 60 pixels (preferred)”, file between 10 KB and 20 KB.",
       minKB: 10,
       maxKB: 20,
@@ -338,6 +343,7 @@ export const EXAMS: Exam[] = [
       width: 140,
       height: 60,
       pixelsVerified: true,
+      dimensionMode: "preferred",
       pixelNote: "Annexure: 140 × 60 pixels (preferred), 10 KB–20 KB, not in capital letters.",
       minKB: 10,
       maxKB: 20,
@@ -409,6 +415,7 @@ export const EXAMS: Exam[] = [
       width: 140,
       height: 60,
       pixelsVerified: true,
+      dimensionMode: "preferred",
       pixelNote: "Annexure II: “Dimensions 140 x 60 pixels (preferred)”, file 10 KB to 20 KB.",
       minKB: 10,
       maxKB: 20,
@@ -603,6 +610,7 @@ export const EXAMS: Exam[] = [
       width: 140,
       height: 60,
       pixelsVerified: true,
+      dimensionMode: "minimum",
       pixelNote:
         "FAQ question 60: minimum 140 pixels wide × 60 pixels high, at least 100 DPI, JPG/JPEG, 30 KB to 49 KB. 140 × 60 is a minimum, not a maximum. The file this tool writes is exactly that minimum, which meets “at least”. The signature also has to sit inside a 35 mm × 20 mm box on the form.",
       minKB: 30,

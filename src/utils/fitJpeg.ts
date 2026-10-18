@@ -21,6 +21,12 @@ export type FitRequest = {
   panY: number;
   minKB: number;
   maxKB: number;
+  /**
+   * Whether the notice calls the pixel size exact, preferred, a minimum, or does not state
+   * pixels. Preferred/minimum/unverified signatures may grow modestly before metadata is
+   * used to satisfy a minimum byte count.
+   */
+  dimensionMode?: "fixed" | "preferred" | "minimum" | "unverified";
 };
 
 export type FitResult = {
@@ -35,11 +41,35 @@ export type FitResult = {
    * file size. The picture is unchanged; only the file is longer.
    */
   padded: boolean;
+  /** True when real pixel dimensions were increased to reach the minimum byte count. */
+  grew: boolean;
   /** True when the long edge was reduced because the notice states no pixel size. */
   scaled: boolean;
 };
 
 const MAX_FREE_EDGE = 1600;
+
+export function dimensionCandidates(
+  width: number,
+  height: number,
+  mode: "fixed" | "preferred" | "minimum" | "unverified" = "fixed"
+): Array<{ width: number; height: number }> {
+  const scales = mode === "fixed" ? [1] : [1, 1.2, 1.4, 1.6, 2];
+  return scales.map(scale => ({
+    width: Math.round(width * scale),
+    height: Math.round(height * scale)
+  }));
+}
+
+/** Keep the closest real encode below the minimum in case later growth overshoots max. */
+export function choosePaddingCandidate<T extends { bytes: number }>(
+  current: T | null,
+  candidate: T,
+  minBytes: number
+): T | null {
+  if (candidate.bytes >= minBytes) return current;
+  return !current || candidate.bytes > current.bytes ? candidate : current;
+}
 
 function paint(
   image: CanvasImageSource,
@@ -101,8 +131,16 @@ export async function fitImageToSpec(req: FitRequest): Promise<FitResult> {
   const minBytes = req.minKB * 1024;
   const maxBytes = req.maxKB * 1024;
   let last: FitResult | null = null;
+  let padCandidate: FitResult | null = null;
+  const candidates = fixed
+    ? dimensionCandidates(width, height, req.dimensionMode)
+    : [{ width, height }];
 
   for (let attempt = 0; attempt < 6; attempt++) {
+    const candidate = candidates[Math.min(attempt, candidates.length - 1)];
+    width = candidate.width;
+    height = candidate.height;
+    const growth = fixed && req.outWidth ? width / req.outWidth : 1;
     const canvas = paint(
       req.image,
       req.sourceWidth,
@@ -111,8 +149,8 @@ export async function fitImageToSpec(req: FitRequest): Promise<FitResult> {
       height,
       req.fit,
       req.zoom,
-      req.panX,
-      req.panY
+      req.panX * growth,
+      req.panY * growth
     );
     const blobs = new Map<number, Blob>();
     const sizeAt = async (quality: number) => {
@@ -121,17 +159,7 @@ export async function fitImageToSpec(req: FitRequest): Promise<FitResult> {
       return blob.size;
     };
     const hit = await searchQuality(sizeAt, minBytes, maxBytes);
-    let blob = blobs.get(hit.quality) ?? (await toJpeg(canvas, hit.quality));
-    let padded = false;
-    if (blob.size < minBytes) {
-      const paddedBytes = padJpegToMin(new Uint8Array(await blob.arrayBuffer()), minBytes, maxBytes);
-      if (paddedBytes && paddedBytes.length <= maxBytes) {
-        const copy = new ArrayBuffer(paddedBytes.byteLength);
-        new Uint8Array(copy).set(paddedBytes);
-        blob = new Blob([copy], { type: "image/jpeg" });
-        padded = true;
-      }
-    }
+    const blob = blobs.get(hit.quality) ?? (await toJpeg(canvas, hit.quality));
     last = {
       blob,
       width,
@@ -139,15 +167,37 @@ export async function fitImageToSpec(req: FitRequest): Promise<FitResult> {
       bytes: blob.size,
       quality: hit.quality,
       fits: blob.size >= minBytes && blob.size <= maxBytes,
-      padded,
+      padded: false,
+      grew: fixed && (width !== req.outWidth || height !== req.outHeight),
       scaled
     };
+    padCandidate = choosePaddingCandidate(padCandidate, last, minBytes);
     if (last.fits) return last;
-    if (fixed || last.bytes <= maxBytes) return last;
+    if (fixed) {
+      if (last.bytes > maxBytes || attempt + 1 >= candidates.length) break;
+      continue;
+    }
+    if (last.bytes <= maxBytes) break;
     width = Math.max(32, Math.round(width * 0.85));
     height = Math.max(32, Math.round(height * 0.85));
+    candidates[0] = { width, height };
     scaled = true;
   }
 
+  // Metadata is the final fallback only. It changes no pixels, but some portals may strip
+  // or reject it, so the result is visibly labelled instead of presented as an ordinary fit.
+  if (padCandidate) {
+    const paddedBytes = padJpegToMin(
+      new Uint8Array(await padCandidate.blob.arrayBuffer()),
+      minBytes,
+      maxBytes
+    );
+    if (paddedBytes && paddedBytes.length <= maxBytes) {
+      const copy = new ArrayBuffer(paddedBytes.byteLength);
+      new Uint8Array(copy).set(paddedBytes);
+      const blob = new Blob([copy], { type: "image/jpeg" });
+      return { ...padCandidate, blob, bytes: blob.size, fits: true, padded: true };
+    }
+  }
   return last!;
 }

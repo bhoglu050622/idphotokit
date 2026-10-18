@@ -727,7 +727,9 @@ input[type="color"] {
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: var(--surround);
+  /* Outside a narrow source image, white reads as the intended passport background.
+     The old neutral surround appeared as a stray grey strip on the left. */
+  background: #fff;
 }
 
 /* ---------------- Ruler flourish ---------------- */
@@ -1322,6 +1324,7 @@ html[data-editing] .countryDoc { display: none; }
   font-size: 14px;
 }
 .examResult.bad { background: var(--redline-tint); }
+.examResult.warn { background: var(--warn-tint); }
 .examMiss { color: var(--redline); font-size: 13.5px; }
 .examIndex { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .examIndexCard {

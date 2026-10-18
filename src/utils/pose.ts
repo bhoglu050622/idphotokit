@@ -1,4 +1,5 @@
 import { FaceLandmarker, FilesetResolver, type NormalizedLandmark } from "@mediapipe/tasks-vision";
+import { detectFacesOnCanvas, type FaceBox } from "./mediapipe";
 
 /**
  * How the face sits in the photo: tilted, turned, nodding, eyes shut, mouth open, lit from
@@ -36,6 +37,8 @@ const FACE_EDGE_RIGHT = 234;
 const FACE_EDGE_LEFT = 454;
 
 export type FacePose = {
+  /** Full face mesh, or an honest roll-only fallback from detector eye keypoints. */
+  detail: "landmarks" | "eyes";
   /** Faces large enough to be a second person in the photo, including the main one. */
   faces: number;
   /** Smaller faces as well — posters, people in the distance. */
@@ -167,9 +170,22 @@ async function analyse(bitmap: ImageBitmap): Promise<FacePose | null> {
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
-  const fl = await getFaceLandmarker();
-  const res = fl.detect(canvas);
-  if (!res.faceLandmarks.length) return null;
+  let res;
+  try {
+    const fl = await getFaceLandmarker();
+    res = fl.detect(canvas);
+  } catch {
+    const faces = await detectFacesOnCanvas(canvas).catch(() => []);
+    return faces[0]
+      ? poseFromDetectorEyes(faces[0], canvas.width, canvas.height, scale, faces.length)
+      : null;
+  }
+  if (!res.faceLandmarks.length) {
+    const faces = await detectFacesOnCanvas(canvas).catch(() => []);
+    return faces[0]
+      ? poseFromDetectorEyes(faces[0], canvas.width, canvas.height, scale, faces.length)
+      : null;
+  }
 
   // The main face is the largest; framing makes the same choice.
   const areas = res.faceLandmarks.map(faceArea);
@@ -201,6 +217,7 @@ async function analyse(bitmap: ImageBitmap): Promise<FacePose | null> {
   const [cl, cr] = c1.x <= c2.x ? [c1, c2] : [c2, c1];
 
   return {
+    detail: "landmarks",
     faces: areas.filter(area => area >= areas[main] * SECOND_FACE_AREA).length,
     allFaces: areas.length,
     roll,
@@ -211,6 +228,42 @@ async function analyse(bitmap: ImageBitmap): Promise<FacePose | null> {
     smile: (score(shapes, "mouthSmileLeft") + score(shapes, "mouthSmileRight")) / 2,
     cheeks: { left: patchLuminance(img, cl.x, cl.y, half), right: patchLuminance(img, cr.x, cr.y, half) },
     eyeMid: { x: (l.x + r.x) / 2 / scale, y: (l.y + r.y) / 2 / scale }
+  };
+}
+
+/**
+ * Roll-only fallback from the same BlazeFace eye keypoints that auto-framing already uses.
+ * This prevents a face-landmarker miss from being reported as “no face” when framing found
+ * one. Yaw, expression and lighting remain unreported rather than guessed.
+ */
+export function poseFromDetectorEyes(
+  face: Pick<FaceBox, "leftEye" | "rightEye">,
+  width = 1,
+  height = 1,
+  analysisScale = 1,
+  faceCount = 0
+): FacePose | null {
+  if (!face.leftEye || !face.rightEye) return null;
+  const [l, r] =
+    face.leftEye.x <= face.rightEye.x
+      ? [face.leftEye, face.rightEye]
+      : [face.rightEye, face.leftEye];
+  const roll = Math.atan2((r.y - l.y) * height, (r.x - l.x) * width) * DEG;
+  return {
+    detail: "eyes",
+    faces: faceCount,
+    allFaces: faceCount,
+    roll,
+    yaw: 0,
+    pitch: 0,
+    eyesClosed: 0,
+    mouthOpen: 0,
+    smile: 0,
+    cheeks: { left: 0, right: 0 },
+    eyeMid: {
+      x: ((l.x + r.x) / 2 * width) / analysisScale,
+      y: ((l.y + r.y) / 2 * height) / analysisScale
+    }
   };
 }
 
