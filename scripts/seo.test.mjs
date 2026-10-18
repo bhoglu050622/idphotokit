@@ -73,6 +73,17 @@ test("every built page canonicalises to photojhat.pages.dev", async () => {
   assert.deepEqual(mismatches, []);
 });
 
+test("every page includes the Google Search Console verification tag", async () => {
+  const tag = '<meta name="google-site-verification" content="z3hBGl84V4QqHhHPBOTUqXKXdDXpmDZOYv7bxKhwobk" />';
+  const files = await htmlFiles(distDir);
+  const missing = [];
+  for (const file of files) {
+    const html = await readFile(file, "utf8");
+    if (!html.includes(tag)) missing.push(relative(distDir, file));
+  }
+  assert.deepEqual(missing, []);
+});
+
 test("robots.txt points at the PhotoJhat sitemap and the IndexNow key is at the site root", async () => {
   const robots = await readFile(new URL("robots.txt", dist), "utf8");
   assert.match(robots, /^Sitemap: https:\/\/photojhat\.pages\.dev\/sitemap\.xml\s*$/m);
