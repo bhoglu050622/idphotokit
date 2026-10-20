@@ -198,6 +198,8 @@ assets and the MODNet file are cached for a year. Unknown paths fall back to `in
 Pretty URLs work because each document and exam is written both as `path/index.html` and
 `path.html`.
 
+`/background-remover` removes a portrait or product background in the browser with BiRefNet lite (MIT, about 94 MB). The weights are not in this repo: Cloudflare Pages rejects a file over 25 MiB, so the page downloads them from Hugging Face the first time someone runs a cutout and caches them in the browser. People and products use that one model. The smaller MODNet file stays on the passport tool only, because those weights are CC BY-NC-SA 4.0. Free PNGs are capped at 1000 pixels on the long side and have no watermark. HD and batch export are labelled coming soon; there is no payment. Comparison pages: `/remove-bg-alternative`, `/remove-bg-alternative-free-india`, and `/white-background-for-meesho-amazon`.
+
 `public/robots.txt` points at `https://photojhat.pages.dev/sitemap.xml`. The sitemap is
 generated into `dist/sitemap.xml` by the prerender step and lists `/`, `/exam`, every exam
 page, and the Indian document pages. Other document pages stay reachable and carry
@@ -242,6 +244,7 @@ copyright notice.
 That covers the code in this repository. The things it depends on carry their own terms,
 and two are worth knowing about before you build a product on this:
 
+- **BiRefNet lite** (about 94 MB / 98,484,532 bytes) — the background-remover model, a 512×512 fp16 ONNX conversion of ZhengPeng7/BiRefNet_lite by Studio Ludens. Code and weights are MIT (copyright 2024 ZhengPeng and 2026 Studio Ludens V.O.F.). The licence text is `public/models/birefnet-lite-512-fp16.LICENSE.txt`. The weights themselves are loaded at runtime from `https://huggingface.co/studioludens/birefnet-lite-512/resolve/main/onnx/model_fp16.onnx` and are not committed, because a 94 MB file would fail a Cloudflare Pages upload. The URL lives in `src/utils/birefnet.ts`. It is fetched only on the background-remover pages. The passport tool does not use it.
 - **MODNet** (`public/models/modnet.onnx`) — the matting network, by Zhanghan Ke et al.
   ([ZHKKKe/MODNet](https://github.com/ZHKKKe/MODNet)). The MODNet source is Apache-2.0,
   but the officially published pretrained weights are released under

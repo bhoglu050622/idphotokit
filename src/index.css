@@ -137,7 +137,7 @@ a { color: var(--navy); text-decoration-color: var(--line-strong); }
   border-top: 1px solid var(--line);
   font-size: 12px;
   letter-spacing: 0.14em;
-  color: var(--line-strong);
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
@@ -1349,6 +1349,46 @@ html[data-editing] .countryDoc { display: none; }
 }
 @media (max-width: 800px) {
   .examGrid, .examIndex { grid-template-columns: 1fr; }
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.bgTool { width: min(880px, 94vw); margin: 8px auto 28px; }
+.bgDrop, .bgResult, .hdCard { margin-top: 16px; }
+.bgDrop, .hdCard {
+  padding: 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.bgProgress { margin-top: 12px; }
+.bgProgress [role="progressbar"] {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--navy-tint);
+  overflow: hidden;
+}
+.bgProgress [role="progressbar"] span { display: block; height: 100%; background: var(--navy); }
+.bgResult { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
+.bgResult img {
+  width: 100%;
+  background: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 24px 24px;
+  border: 1px solid var(--line);
+}
+.bgResult fieldset { border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
+.hdCard h2 { margin: 0 0 8px; font-size: 18px; }
+@media (max-width: 700px) {
+  .bgResult { grid-template-columns: 1fr; }
+  .bgDrop .actionRow, .bgResult .btn { width: 100%; }
 }
 
 /* The homepage's country list: one line until opened. The links are in the HTML either way. */
