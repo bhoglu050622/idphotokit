@@ -18,6 +18,18 @@ export const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
 /** IndexNow accepts at most 10,000 URLs in one POST. */
 export const MAX_URLS = 10_000;
 
+/**
+ * IndexNow requires the UTF-8 text file to contain only the key. In particular,
+ * a trailing newline or a UTF-8 BOM makes the hosted file a different value.
+ */
+export function validateKeyFile(contents) {
+  if (contents !== KEY) {
+    throw new Error(
+      `public/${KEY}.txt must contain exactly the ${KEY.length}-character IndexNow key (no BOM or whitespace).`
+    );
+  }
+}
+
 export function urlsFromSitemap(xml) {
   return [...String(xml).matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map(match => match[1]);
 }
@@ -58,9 +70,7 @@ export async function submitIndexNow(urls, fetchImpl = fetch) {
 async function main() {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
   const keyFile = await readFile(join(root, "public", `${KEY}.txt`), "utf8");
-  if (keyFile.trim() !== KEY) {
-    throw new Error(`public/${KEY}.txt does not contain the IndexNow key.`);
-  }
+  validateKeyFile(keyFile);
   const xml = await readFile(join(root, "dist", "sitemap.xml"), "utf8");
   const urls = urlsFromSitemap(xml);
   for (let start = 0; start < urls.length; start += MAX_URLS) {

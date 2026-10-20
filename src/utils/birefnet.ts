@@ -10,9 +10,12 @@
  * The licence text shipped with the site is public/models/birefnet-lite-512-fp16.LICENSE.txt.
  * Commercial use is allowed.
  *
- * MODNet is not used as a lighter portrait path. Its code is Apache-2.0, but the
- * pretrained weights in public/models/modnet.onnx are CC BY-NC-SA 4.0. That
- * licence is non-commercial, so those weights stay on the passport tool only.
+ * MODNet is not used as a lighter portrait path because this general-subject
+ * model is selected for the tool. The existing portrait weights in
+ * public/models/modnet.onnx are Apache-2.0: the MODNet authors relicensed
+ * their code, models, and demos on 28 January 2022:
+ * https://github.com/ZHKKKe/MODNet/blob/master/README.md#license
+ * The fp16 ONNX conversion is also published as https://huggingface.co/Xenova/modnet.
  *
  * The download runs only when this tool starts, then stays in the Cache API and
  * in memory for the page session. The photo is never uploaded.
