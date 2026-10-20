@@ -108,16 +108,18 @@ export default function App() {
             </a>
           </span>
         </div>
-        {/* The matting weights are CC BY-NC-SA and every visitor downloads them, so the
-            credit and licence belong on the site, not only in the README. */}
+        {/* The MODNet authors released their code, models, and demos under Apache-2.0
+            on 28 January 2022. The credit and licence belong on the site, not only in
+            the README. */}
         <div className="footerCredits">
           Background removal:{" "}
           <a href="https://github.com/ZHKKKe/MODNet" target="_blank" rel="noreferrer">MODNet</a>{" "}
           by Zhanghan Ke et al., pretrained weights (converted to fp16) under{" "}
-          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noreferrer">
-            CC BY-NC-SA 4.0
+          <a href="https://github.com/ZHKKKe/MODNet/blob/master/README.md#license" target="_blank" rel="noreferrer">
+            Apache-2.0
           </a>
-          . Face and pose detection:{" "}
+          {" "}(<a href="https://huggingface.co/Xenova/modnet" target="_blank" rel="noreferrer">Xenova/modnet</a>).
+          {" "}Face and pose detection:{" "}
           <a href="https://ai.google.dev/edge/mediapipe/solutions/guide" target="_blank" rel="noreferrer">
             MediaPipe
           </a>{" "}

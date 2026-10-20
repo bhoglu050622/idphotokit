@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HOST, KEY, indexNowPayload, urlsFromSitemap } from "./indexnow.mjs";
+import { HOST, KEY, indexNowPayload, urlsFromSitemap, validateKeyFile } from "./indexnow.mjs";
 
 test("reads every sitemap location", () => {
   const urls = urlsFromSitemap(`<?xml version="1.0"?>
@@ -19,6 +19,12 @@ test("builds the IndexNow submission for photojhat.pages.dev", () => {
     keyLocation: `https://${HOST}/${KEY}.txt`,
     urlList: urls
   });
+});
+
+test("requires the hosted key file to match exactly", () => {
+  assert.doesNotThrow(() => validateKeyFile(KEY));
+  assert.throws(() => validateKeyFile(`${KEY}\n`), /exactly.*no BOM or whitespace/);
+  assert.throws(() => validateKeyFile(`\uFEFF${KEY}`), /exactly.*no BOM or whitespace/);
 });
 
 test("refuses a sitemap built for another host", () => {
