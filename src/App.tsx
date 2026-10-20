@@ -7,7 +7,9 @@ import FeedbackDialog from "./components/ui/FeedbackDialog";
 import { useFeedback } from "./state/feedback";
 import { BRAND } from "./brand";
 import ExamTool from "./components/ExamTool";
+import BackgroundRemover from "./components/BackgroundRemover";
 import { isExamPath } from "./utils/examRoute";
+import { backgroundPath } from "./utils/backgroundRoute";
 
 /** The footer strip, written as the machine-readable zone of an ID card ("I<" document code). */
 const MRZ = `I<UTO${BRAND.toUpperCase().replace(/\s+/g, "")}<<PASSPORT<VISA<ID<LICENCE<<FREE<<NO<UPLOAD<<<<<<<<`;
@@ -19,6 +21,7 @@ const MODES: Array<{ id: AppMode; label: string; hint: string }> = [
 
 export default function App() {
   const examMode = isExamPath();
+  const backgroundMode = !!backgroundPath();
   const mode = useAppStore(s => s.mode);
   const setMode = useAppStore(s => s.setMode);
   const editing = useAppStore(s => s.mode === "make" && s.step > 1);
@@ -53,6 +56,7 @@ export default function App() {
           {BRAND}
         </a>
         <a className="examNav" href="/exam">Exam photos</a>
+        <a className="examNav" href="/background-remover">Remove background</a>
 
         <div className="topbarRight">
           <span className="trustbadge">
@@ -64,7 +68,9 @@ export default function App() {
       </header>
 
       <main className="main">
-        {examMode ? (
+        {backgroundMode ? (
+          <BackgroundRemover />
+        ) : examMode ? (
           <ExamTool />
         ) : (
           <>

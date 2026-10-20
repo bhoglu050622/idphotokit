@@ -17,6 +17,7 @@
 import { build } from "esbuild";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { specsModule } from "./specs.mjs";
+import { backgroundPages } from "./background-pages.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -460,6 +461,17 @@ function homeDirectory(presets, lib) {
         <ul class="countryLinks">
           ${lib.EXAMS.map(e => `<li><a href="/exam/${e.slug}">${esc(e.name)}</a> — ${esc(e.cycle)}</li>`).join("")}
         </ul>
+        <h2>Remove a background</h2>
+        <p>
+          A separate in-browser cutout for people and product photos, including a white square
+          preset for marketplace listings. The photo is not uploaded.
+        </p>
+        <ul class="countryLinks">
+          <li><a href="/background-remover">Background remover</a></li>
+          <li><a href="/remove-bg-alternative">remove.bg alternative</a></li>
+          <li><a href="/remove-bg-alternative-free-india">Free remove.bg alternative in India</a></li>
+          <li><a href="/white-background-for-meesho-amazon">White background for Meesho, Amazon and Flipkart</a></li>
+        </ul>
       </div>
       <details class="countryDocInner">
         <summary><h2>Photo sizes by country</h2></summary>
@@ -657,6 +669,7 @@ function examIndexMeta(exams, lib) {
 function sitemap(presets, lib) {
   const urls = [
     { loc: `${SITE}/`, priority: "1.0" },
+    ...backgroundPages().map(page => ({ loc: `${SITE}${page.path}`, priority: "0.9" })),
     { loc: `${SITE}/exam`, priority: "0.9" },
     ...lib.EXAMS.map(e => ({ loc: `${SITE}/exam/${e.slug}`, priority: "0.9" })),
     ...presets
@@ -717,6 +730,18 @@ async function main() {
     "exam",
     shell.replace(META_BLOCK, examIndexMeta(lib.EXAMS, lib)).replace(DOC_SLOT, examIndexDoc(lib.EXAMS))
   );
+
+  for (const page of backgroundPages()) {
+    await writePage(
+      page.path.slice(1),
+      shell.replace(META_BLOCK, metaBlock({
+        title: page.title,
+        description: page.description,
+        url: `${SITE}${page.path}`,
+        jsonLd: page.jsonLd(`${SITE}${page.path}`)
+      }, lib)).replace(DOC_SLOT, page.body)
+    );
+  }
 
   // The homepage gets the brand's own meta, and the country directory in the slot.
   await writeFile(

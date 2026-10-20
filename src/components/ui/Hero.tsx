@@ -25,7 +25,8 @@ const INDIA_LINKS: { href: string; label: string }[] = [
   { href: "/photo/india/pan-card", label: "PAN" },
   { href: "/photo/india/aadhaar", label: "Aadhaar" },
   { href: "/photo/india/oci-card-2x2-in", label: "OCI" },
-  { href: "/exam", label: "Exam photos" }
+  { href: "/exam", label: "Exam photos" },
+  { href: "/background-remover", label: "Remove background" }
 ];
 
 /**

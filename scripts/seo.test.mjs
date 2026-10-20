@@ -29,18 +29,25 @@ function expectedCanonical(file) {
 test("sitemap contains only India and exam routes", async () => {
   const xml = await readFile(new URL("sitemap.xml", dist), "utf8");
   const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m => new URL(m[1]).pathname);
+  const tools = new Set([
+    "/background-remover",
+    "/remove-bg-alternative",
+    "/remove-bg-alternative-free-india",
+    "/white-background-for-meesho-amazon"
+  ]);
   const unexpected = urls.filter(
     path =>
       path !== "/" &&
       path !== "/exam" &&
       !path.startsWith("/exam/") &&
       path !== "/photo/india" &&
-      !path.startsWith("/photo/india/")
+      !path.startsWith("/photo/india/") &&
+      !tools.has(path)
   );
   assert.deepEqual(unexpected, []);
   assert.ok(urls.length < 100, `expected an India-focused sitemap, found ${urls.length} URLs`);
   assert.ok(!urls.includes("/photo"), "international photo hub must not be in the sitemap");
-  for (const path of ["/exam/ssc-cgl", "/exam/ibps-po", "/exam/neet-ug", "/photo/india"]) {
+  for (const path of ["/exam/ssc-cgl", "/exam/ibps-po", "/exam/neet-ug", "/photo/india", ...tools]) {
     assert.ok(urls.includes(path), `expected ${path} in the sitemap`);
   }
 });

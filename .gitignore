@@ -17,6 +17,9 @@ test-images
 public/test-images
 model-images
 
+# BiRefNet weights are fetched from Hugging Face. Cloudflare Pages rejects a file over 25 MiB.
+public/models/birefnet-lite-512-fp16.onnx
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
